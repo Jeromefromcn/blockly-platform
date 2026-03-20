@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   db:
     image: mysql:8.0
@@ -20,13 +18,6 @@ services:
       timeout: 5s
       retries: 10
 
-  sandbox:
-    build: ./sandbox
-    container_name: blockly_sandbox
-    restart: unless-stopped
-    networks:
-      - blockly_net
-
   backend:
     build: ./backend
     container_name: blockly_backend
@@ -36,7 +27,6 @@ services:
       DB_NAME: blocklydb
       DB_USER: blockly
       DB_PASS: blockly123
-      SANDBOX_URL: http://sandbox:3000
     depends_on:
       db:
         condition: service_healthy
@@ -54,8 +44,42 @@ services:
     networks:
       - blockly_net
 
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: blockly_prometheus
+    restart: unless-stopped
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - blockly_net
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=30d'
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: blockly_grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin123
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    depends_on:
+      - prometheus
+    networks:
+      - blockly_net
+
 volumes:
   db_data:
+  prometheus_data:
+  grafana_data:
 
 networks:
   blockly_net:

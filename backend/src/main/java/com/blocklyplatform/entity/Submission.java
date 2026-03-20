@@ -20,14 +20,14 @@ public class Submission {
     @Column(name = "version_number", nullable = false)
     private Integer versionNumber;
 
-    @Column(name = "student_name", nullable = false)
+    @Column(name = "student_name")
     private String studentName;
+
+    @Column(name = "source_filename", nullable = false)
+    private String sourceFilename;
 
     @Column(name = "blockly_state", nullable = false, columnDefinition = "TEXT")
     private String blocklyState;
-
-    @Column(name = "generated_code", nullable = false, columnDefinition = "TEXT")
-    private String generatedCode;
 
     @Column(name = "submitted_at")
     private LocalDateTime submittedAt;

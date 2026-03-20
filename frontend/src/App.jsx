@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import Home from './pages/Home.jsx';
 import Workspace from './pages/Workspace.jsx';
 import Admin from './pages/Admin.jsx';
@@ -9,22 +9,18 @@ const NAV_STYLE = {
   display: 'flex', alignItems: 'center', gap: '24px',
   boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
 };
-const LOGO = { color: '#fff', fontWeight: 700, fontSize: '1.1rem', textDecoration: 'none' };
-const LINK = { color: '#bee3f8', textDecoration: 'none', fontSize: '0.9rem' };
-
-function Nav() {
-  return (
-    <nav style={NAV_STYLE}>
-      <Link to="/" style={LOGO}>🧩 Blockly 練習平台</Link>
-      <Link to="/admin" style={LINK}>管理後台</Link>
-    </nav>
-  );
-}
 
 export default function App() {
   return (
     <BrowserRouter>
-      <Nav />
+      <nav style={NAV_STYLE}>
+        <Link to="/" style={{ color: '#fff', fontWeight: 700, fontSize: '1.1rem', textDecoration: 'none' }}>
+          🧩 Blockly Exercise Platform
+        </Link>
+        <Link to="/admin" style={{ color: '#bee3f8', textDecoration: 'none', fontSize: '0.9rem' }}>
+          Admin Panel
+        </Link>
+      </nav>
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/exercise/:id" element={<Workspace />} />

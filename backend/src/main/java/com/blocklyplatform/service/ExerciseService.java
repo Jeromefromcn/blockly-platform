@@ -3,8 +3,10 @@ package com.blocklyplatform.service;
 import com.blocklyplatform.dto.ExerciseCreateDto;
 import com.blocklyplatform.entity.Exercise;
 import com.blocklyplatform.entity.ExerciseVersion;
+import com.blocklyplatform.entity.Like;
 import com.blocklyplatform.repository.ExerciseRepository;
 import com.blocklyplatform.repository.ExerciseVersionRepository;
+import com.blocklyplatform.repository.LikeRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +23,7 @@ public class ExerciseService {
 
     private final ExerciseRepository exerciseRepo;
     private final ExerciseVersionRepository versionRepo;
+    private final LikeRepository likeRepo;
 
     public List<Map<String, Object>> listAll() {
         return exerciseRepo.findByDeletedAtIsNullOrderByCreatedAtDesc()
@@ -118,6 +121,18 @@ public class ExerciseService {
         exerciseRepo.save(ex);
     }
 
+    @Transactional
+    public Map<String, Object> like(Long id) {
+        Exercise ex = exerciseRepo.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new RuntimeException("Exercise not found"));
+        Like like = new Like();
+        like.setExercise(ex);
+        likeRepo.save(like);
+        ex.setLikeCount(ex.getLikeCount() + 1);
+        exerciseRepo.save(ex);
+        return Map.of("exerciseId", id, "likeCount", ex.getLikeCount());
+    }
+
     private ExerciseVersion saveVersion(Exercise ex, ExerciseCreateDto dto) {
         int newVersionNumber = ex.getCurrentVersionNumber() + 1;
         ExerciseVersion version = new ExerciseVersion();
@@ -137,6 +152,7 @@ public class ExerciseService {
         m.put("title", ex.getTitle());
         m.put("status", ex.getStatus());
         m.put("currentVersionNumber", ex.getCurrentVersionNumber());
+        m.put("likeCount", ex.getLikeCount());
         m.put("createdAt", ex.getCreatedAt());
         m.put("updatedAt", ex.getUpdatedAt());
         return m;

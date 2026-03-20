@@ -11,7 +11,6 @@ const S = {
   input: { width: '100%', padding: '9px 12px', border: '1px solid #cbd5e0', borderRadius: 6, fontSize: '0.92rem', outline: 'none', marginBottom: 16 },
   textarea: { width: '100%', padding: '9px 12px', border: '1px solid #cbd5e0', borderRadius: 6, fontSize: '0.88rem', fontFamily: 'monospace', resize: 'vertical', outline: 'none', marginBottom: 16 },
   row: { display: 'flex', gap: 20 },
-  col: { flex: 1 },
   btn: { padding: '10px 24px', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: '0.92rem' },
   btnRow: { display: 'flex', gap: 12 },
 };
@@ -21,11 +20,10 @@ export default function AdminEditor() {
   const navigate = useNavigate();
   const isEdit = !!id;
 
-  const [form, setForm] = useState({
-    code: '', title: '', description: '', expectedOutput: '', createdBy: 'admin'
-  });
+  const [form, setForm] = useState({ code: '', title: '', description: '', expectedOutput: '', createdBy: 'admin' });
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
+  const [initialBlocklyState, setInitialBlocklyState] = useState(null);
   const wsRef = useRef(null);
 
   useEffect(() => {
@@ -38,20 +36,26 @@ export default function AdminEditor() {
           title: data.title,
           description: data.version?.description || '',
           expectedOutput: data.version?.expectedOutput || '',
-          createdBy: 'admin'
+          createdBy: data.version?.createdBy || 'admin',
         });
+        // Load saved blockly state for reference solution
+        if (data.version?.blocklyState) {
+          try {
+            setInitialBlocklyState(JSON.parse(data.version.blocklyState));
+          } catch {
+            setInitialBlocklyState(data.version.blocklyState);
+          }
+        }
         setLoading(false);
       });
   }, [id]);
 
   const handleSave = async () => {
-    if (!form.title.trim() || !form.code.trim()) { alert('代碼和標題為必填'); return; }
-    if (!form.description.trim()) { alert('題目描述為必填'); return; }
-    if (!form.expectedOutput.trim()) { alert('預期輸出為必填'); return; }
+    if (!form.title.trim() || !form.code.trim()) { alert('Code and title are required.'); return; }
+    if (!form.description.trim()) { alert('Description is required.'); return; }
+    if (!form.expectedOutput.trim()) { alert('Expected output is required.'); return; }
 
-    const blocklyState = wsRef.current
-      ? JSON.stringify(wsRef.current.getState())
-      : '{}';
+    const blocklyState = wsRef.current ? JSON.stringify(wsRef.current.getState()) : '{}';
 
     setSaving(true);
     try {
@@ -60,11 +64,11 @@ export default function AdminEditor() {
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, blocklyState })
+        body: JSON.stringify({ ...form, blocklyState }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || '保存失敗');
-      alert('保存成功！');
+      if (!res.ok) throw new Error(data.message || 'Save failed');
+      alert('Saved successfully!');
       navigate('/admin');
     } catch (e) {
       alert(e.message);
@@ -73,57 +77,62 @@ export default function AdminEditor() {
     }
   };
 
-  const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
+  const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
 
-  if (loading) return <div style={{ padding: 40 }}>載入中...</div>;
+  if (loading) return <div style={{ padding: 40 }}>Loading...</div>;
 
   return (
     <div style={S.container}>
       <div style={S.header}>
-        <h1 style={S.h1}>{isEdit ? '編輯題目' : '新建題目'}</h1>
+        <h1 style={S.h1}>{isEdit ? 'Edit Exercise' : 'New Exercise'}</h1>
         <div style={S.btnRow}>
           <button style={{ ...S.btn, background: '#e2e8f0', color: '#4a5568' }}
-            onClick={() => navigate('/admin')}>取消</button>
+            onClick={() => navigate('/admin')}>Cancel</button>
           <button style={{ ...S.btn, background: '#2b6cb0', color: '#fff' }}
             onClick={handleSave} disabled={saving}>
-            {saving ? '保存中...' : '保存'}
+            {saving ? 'Saving...' : 'Save'}
           </button>
         </div>
       </div>
 
       <div style={S.row}>
-        <div style={S.col}>
+        <div style={{ flex: 1 }}>
           <div style={S.card}>
-            <h2 style={{ fontSize: '1rem', marginBottom: 16, color: '#2d3748' }}>基本信息</h2>
-            <label style={S.label}>題目代碼（唯一標識，創建後不可修改）</label>
+            <h2 style={{ fontSize: '1rem', marginBottom: 16, color: '#2d3748' }}>Exercise Info</h2>
+
+            <label style={S.label}>Exercise Code (unique identifier, cannot change after creation)</label>
             <input style={{ ...S.input, ...(isEdit ? { background: '#f7fafc', color: '#a0aec0' } : {}) }}
-              value={form.code} onChange={set('code')} placeholder="如 ex001"
-              readOnly={isEdit} />
+              value={form.code} onChange={set('code')} placeholder="e.g. ex001" readOnly={isEdit} />
 
-            <label style={S.label}>標題</label>
-            <input style={S.input} value={form.title} onChange={set('title')} placeholder="題目標題" />
+            <label style={S.label}>Title</label>
+            <input style={S.input} value={form.title} onChange={set('title')} placeholder="Exercise title" />
 
-            <label style={S.label}>題目描述（學生可見，支持換行）</label>
+            <label style={S.label}>Description (visible to students)</label>
             <textarea style={S.textarea} rows={6} value={form.description}
-              onChange={set('description')} placeholder="描述題目要求..." />
+              onChange={set('description')} placeholder="Describe the exercise requirements..." />
 
-            <label style={S.label}>預期輸出（程序應輸出的內容）</label>
-            <textarea style={{ ...S.textarea, fontFamily: 'monospace', background: '#f7fafc' }}
-              rows={4} value={form.expectedOutput}
-              onChange={set('expectedOutput')} placeholder="Hello World" />
+            <label style={S.label}>Expected Output (what the program should print)</label>
+            <textarea style={{ ...S.textarea, background: '#f7fafc' }} rows={4}
+              value={form.expectedOutput} onChange={set('expectedOutput')} placeholder="Hello World" />
           </div>
         </div>
 
         <div style={{ flex: 1.4 }}>
           <div style={S.card}>
-            <h2 style={{ fontSize: '1rem', marginBottom: 16, color: '#2d3748' }}>
-              參考解答 <span style={{ fontWeight: 400, fontSize: '0.82rem', color: '#718096' }}>（用積木拼出標準答案）</span>
-            </h2>
+            <h2 style={{ fontSize: '1rem', marginBottom: 4, color: '#2d3748' }}>Reference Solution</h2>
+            <p style={{ fontSize: '0.82rem', color: '#718096', marginBottom: 16 }}>
+              Build the reference answer using blocks below.
+              {isEdit && ' Previous answer has been loaded.'}
+            </p>
             <div style={{ height: 480 }}>
-              <BlocklyWorkspace
-                onWorkspaceReady={api => { wsRef.current = api; }}
-                initialState={isEdit ? null : null}
-              />
+              {/* Only render BlocklyWorkspace after data is loaded to ensure initialState is applied */}
+              {(!isEdit || !loading) && (
+                <BlocklyWorkspace
+                  key={isEdit ? `edit-${id}` : 'new'}
+                  onWorkspaceReady={api => { wsRef.current = api; }}
+                  initialState={initialBlocklyState}
+                />
+              )}
             </div>
           </div>
         </div>

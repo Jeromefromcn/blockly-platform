@@ -25,6 +25,9 @@ public class Exercise {
     @Column(name = "current_version_number")
     private Integer currentVersionNumber = 0;
 
+    @Column(name = "like_count")
+    private Integer likeCount = 0;
+
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 

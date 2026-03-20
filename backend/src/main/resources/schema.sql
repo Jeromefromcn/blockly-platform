@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS exercises (
   title                  VARCHAR(255) NOT NULL,
   status                 VARCHAR(20) NOT NULL DEFAULT 'DRAFT',
   current_version_number INT NOT NULL DEFAULT 0,
+  like_count             INT NOT NULL DEFAULT 0,
   deleted_at             DATETIME DEFAULT NULL,
   created_at             DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at             DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -23,28 +24,30 @@ CREATE TABLE IF NOT EXISTS exercise_versions (
   FOREIGN KEY (exercise_id) REFERENCES exercises(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS likes (
+  id          BIGINT PRIMARY KEY AUTO_INCREMENT,
+  exercise_id BIGINT NOT NULL,
+  created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (exercise_id) REFERENCES exercises(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS submissions (
-  id              BIGINT PRIMARY KEY AUTO_INCREMENT,
-  exercise_id     BIGINT NOT NULL,
-  version_number  INT NOT NULL,
-  student_name    VARCHAR(100) NOT NULL,
-  blockly_state   TEXT NOT NULL,
-  generated_code  TEXT NOT NULL,
-  submitted_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  deleted_at      DATETIME DEFAULT NULL,
+  id               BIGINT PRIMARY KEY AUTO_INCREMENT,
+  exercise_id      BIGINT NOT NULL,
+  version_number   INT NOT NULL,
+  student_name     VARCHAR(255) DEFAULT NULL,
+  source_filename  VARCHAR(255) NOT NULL,
+  blockly_state    TEXT NOT NULL,
+  submitted_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  deleted_at       DATETIME DEFAULT NULL,
   FOREIGN KEY (exercise_id) REFERENCES exercises(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS grades (
-  id                BIGINT PRIMARY KEY AUTO_INCREMENT,
-  submission_id     BIGINT NOT NULL,
-  auto_score        INT DEFAULT 0,
-  execution_score   INT DEFAULT 0,
-  structure_score   INT DEFAULT 0,
-  complexity_score  INT DEFAULT 0,
-  actual_output     TEXT,
-  tutor_score       INT DEFAULT NULL,
-  tutor_comment     TEXT,
-  graded_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  id            BIGINT PRIMARY KEY AUTO_INCREMENT,
+  submission_id BIGINT NOT NULL UNIQUE,
+  tutor_score   INT DEFAULT NULL,
+  tutor_comment TEXT,
+  graded_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (submission_id) REFERENCES submissions(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

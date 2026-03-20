@@ -6,7 +6,7 @@ const TOOLBOX = {
   kind: 'categoryToolbox',
   contents: [
     {
-      kind: 'category', name: '邏輯', colour: '#5C81A6',
+      kind: 'category', name: 'Logic', colour: '#5C81A6',
       contents: [
         { kind: 'block', type: 'controls_if' },
         { kind: 'block', type: 'logic_compare' },
@@ -16,7 +16,7 @@ const TOOLBOX = {
       ]
     },
     {
-      kind: 'category', name: '循環', colour: '#5CA65C',
+      kind: 'category', name: 'Loops', colour: '#5CA65C',
       contents: [
         { kind: 'block', type: 'controls_repeat_ext' },
         { kind: 'block', type: 'controls_whileUntil' },
@@ -25,7 +25,7 @@ const TOOLBOX = {
       ]
     },
     {
-      kind: 'category', name: '數學', colour: '#5C68A6',
+      kind: 'category', name: 'Math', colour: '#5C68A6',
       contents: [
         { kind: 'block', type: 'math_number' },
         { kind: 'block', type: 'math_arithmetic' },
@@ -35,7 +35,7 @@ const TOOLBOX = {
       ]
     },
     {
-      kind: 'category', name: '文字', colour: '#5CA68D',
+      kind: 'category', name: 'Text', colour: '#5CA68D',
       contents: [
         { kind: 'block', type: 'text' },
         { kind: 'block', type: 'text_join' },
@@ -44,14 +44,10 @@ const TOOLBOX = {
         { kind: 'block', type: 'text_append' },
       ]
     },
+    { kind: 'category', name: 'Variables', colour: '#A65C81', custom: 'VARIABLE' },
+    { kind: 'category', name: 'Functions', colour: '#9A5CA6', custom: 'PROCEDURE' },
     {
-      kind: 'category', name: '變量', colour: '#A65C81', custom: 'VARIABLE'
-    },
-    {
-      kind: 'category', name: '函數', colour: '#9A5CA6', custom: 'PROCEDURE'
-    },
-    {
-      kind: 'category', name: '列表', colour: '#745CA6',
+      kind: 'category', name: 'Lists', colour: '#745CA6',
       contents: [
         { kind: 'block', type: 'lists_create_empty' },
         { kind: 'block', type: 'lists_create_with' },
@@ -77,10 +73,6 @@ export default function BlocklyWorkspace({ onWorkspaceReady, initialState, readO
       readOnly,
       zoom: { controls: true, wheel: true, startScale: 1.0, maxScale: 2, minScale: 0.5 },
       grid: { spacing: 20, length: 3, colour: '#ccc', snap: true },
-      theme: Blockly.Theme.defineTheme('light', {
-        base: Blockly.Themes.Classic,
-        componentStyles: { workspaceBackgroundColour: '#f9fafb' }
-      })
     });
 
     workspaceRef.current = workspace;
@@ -100,9 +92,13 @@ export default function BlocklyWorkspace({ onWorkspaceReady, initialState, readO
         getCode: () => javascriptGenerator.workspaceToCode(workspace),
         clear: () => workspace.clear(),
         loadState: (state) => {
-          const s = typeof state === 'string' ? JSON.parse(state) : state;
-          Blockly.serialization.workspaces.load(s, workspace);
-        }
+          try {
+            const s = typeof state === 'string' ? JSON.parse(state) : state;
+            Blockly.serialization.workspaces.load(s, workspace);
+          } catch (e) {
+            console.error('Failed to load state:', e);
+          }
+        },
       });
     }
 

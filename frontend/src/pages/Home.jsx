@@ -8,13 +8,19 @@ const S = {
   card: {
     background: '#fff', borderRadius: 10, padding: '20px 24px',
     marginBottom: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
-    cursor: 'pointer', transition: 'box-shadow 0.2s',
-    border: '1px solid #e2e8f0'
+    border: '1px solid #e2e8f0', cursor: 'pointer', transition: 'box-shadow 0.2s'
   },
-  title: { fontSize: '1.1rem', fontWeight: 600, color: '#2d3748', marginBottom: 6 },
+  cardRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
+  title: { fontSize: '1.05rem', fontWeight: 600, color: '#2d3748' },
   badge: {
     display: 'inline-block', padding: '2px 10px', borderRadius: 12,
     background: '#c6f6d5', color: '#276749', fontSize: '0.78rem', fontWeight: 600
+  },
+  likeBtn: {
+    display: 'flex', alignItems: 'center', gap: 6,
+    padding: '5px 14px', border: '1px solid #e2e8f0',
+    borderRadius: 20, background: '#fff', cursor: 'pointer',
+    fontSize: '0.85rem', color: '#718096', transition: 'all 0.15s'
   },
   empty: { textAlign: 'center', color: '#a0aec0', padding: '60px 0', fontSize: '1rem' },
 };
@@ -22,6 +28,9 @@ const S = {
 export default function Home() {
   const [exercises, setExercises] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [liked, setLiked] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('liked') || '{}'); } catch { return {}; }
+  });
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -31,24 +40,47 @@ export default function Home() {
       .catch(() => setLoading(false));
   }, []);
 
-  if (loading) return <div style={S.container}><p style={S.sub}>載入中...</p></div>;
+  const handleLike = async (e, exId) => {
+    e.stopPropagation();
+    if (liked[exId]) return;
+    try {
+      const res = await fetch(`/api/exercises/${exId}/like`, { method: 'POST' });
+      const data = await res.json();
+      setExercises(prev => prev.map(ex => ex.id === exId ? { ...ex, likeCount: data.likeCount } : ex));
+      const newLiked = { ...liked, [exId]: true };
+      setLiked(newLiked);
+      localStorage.setItem('liked', JSON.stringify(newLiked));
+    } catch {}
+  };
+
+  if (loading) return <div style={S.container}><p style={S.sub}>Loading...</p></div>;
 
   return (
     <div style={S.container}>
-      <h1 style={S.h1}>練習題目</h1>
-      <p style={S.sub}>選擇一道題目，用積木拼出你的答案！</p>
+      <h1 style={S.h1}>Exercises</h1>
+      <p style={S.sub}>Choose an exercise and build your solution with blocks!</p>
       {exercises.length === 0
-        ? <div style={S.empty}>目前沒有可用的題目</div>
+        ? <div style={S.empty}>No exercises available yet.</div>
         : exercises.map(ex => (
           <div key={ex.id} style={S.card}
             onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.12)'}
             onMouseLeave={e => e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.08)'}
             onClick={() => navigate(`/exercise/${ex.id}`)}>
-            <div style={S.title}>{ex.title}</div>
-            <span style={S.badge}>已發布</span>
-            <span style={{ marginLeft: 12, fontSize: '0.82rem', color: '#a0aec0' }}>
-              版本 {ex.currentVersionNumber}
-            </span>
+            <div style={S.cardRow}>
+              <div>
+                <div style={S.title}>{ex.title}</div>
+                <div style={{ marginTop: 6, display: 'flex', gap: 10, alignItems: 'center' }}>
+                  <span style={S.badge}>Published</span>
+                  <span style={{ fontSize: '0.8rem', color: '#a0aec0' }}>v{ex.currentVersionNumber}</span>
+                </div>
+              </div>
+              <button
+                style={{ ...S.likeBtn, ...(liked[ex.id] ? { background: '#fff5f5', borderColor: '#feb2b2', color: '#e53e3e' } : {}) }}
+                onClick={e => handleLike(e, ex.id)}
+                title={liked[ex.id] ? 'Already liked' : 'Like this exercise'}>
+                {liked[ex.id] ? '❤️' : '🤍'} {ex.likeCount}
+              </button>
+            </div>
           </div>
         ))
       }

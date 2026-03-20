@@ -17,13 +17,11 @@ public class ExerciseController {
 
     private final ExerciseService exerciseService;
 
-    /** Student: list published exercises */
     @GetMapping("/published")
     public ResponseEntity<?> listPublished() {
         return ResponseEntity.ok(exerciseService.listPublished());
     }
 
-    /** Admin: list all exercises */
     @GetMapping
     public ResponseEntity<?> listAll() {
         return ResponseEntity.ok(exerciseService.listAll());
@@ -62,6 +60,11 @@ public class ExerciseController {
     @PostMapping("/{id}/rollback/{versionNumber}")
     public ResponseEntity<?> rollback(@PathVariable Long id, @PathVariable Integer versionNumber) {
         return ResponseEntity.ok(exerciseService.rollback(id, versionNumber));
+    }
+
+    @PostMapping("/{id}/like")
+    public ResponseEntity<?> like(@PathVariable Long id) {
+        return ResponseEntity.ok(exerciseService.like(id));
     }
 
     @DeleteMapping("/{id}")

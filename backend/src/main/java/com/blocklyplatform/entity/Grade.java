@@ -17,21 +17,6 @@ public class Grade {
     @JoinColumn(name = "submission_id", nullable = false)
     private Submission submission;
 
-    @Column(name = "auto_score")
-    private Integer autoScore = 0;
-
-    @Column(name = "execution_score")
-    private Integer executionScore = 0;
-
-    @Column(name = "structure_score")
-    private Integer structureScore = 0;
-
-    @Column(name = "complexity_score")
-    private Integer complexityScore = 0;
-
-    @Column(name = "actual_output", columnDefinition = "TEXT")
-    private String actualOutput;
-
     @Column(name = "tutor_score")
     private Integer tutorScore;
 
@@ -43,6 +28,11 @@ public class Grade {
 
     @PrePersist
     protected void onCreate() {
+        gradedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
         gradedAt = LocalDateTime.now();
     }
 }

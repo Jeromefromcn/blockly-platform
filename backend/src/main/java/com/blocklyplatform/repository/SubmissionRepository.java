@@ -1,0 +1,13 @@
+package com.blocklyplatform.repository;
+
+import com.blocklyplatform.entity.Submission;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+
+public interface SubmissionRepository extends JpaRepository<Submission, Long> {
+
+    List<Submission> findByDeletedAtIsNullOrderBySubmittedAtDesc();
+
+    List<Submission> findByExerciseIdAndDeletedAtIsNullOrderBySubmittedAtDesc(Long exerciseId);
+}

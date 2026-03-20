@@ -1,0 +1,72 @@
+package com.blocklyplatform.controller;
+
+import com.blocklyplatform.dto.ExerciseCreateDto;
+import com.blocklyplatform.service.ExerciseService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/exercises")
+@RequiredArgsConstructor
+public class ExerciseController {
+
+    private final ExerciseService exerciseService;
+
+    /** Student: list published exercises */
+    @GetMapping("/published")
+    public ResponseEntity<?> listPublished() {
+        return ResponseEntity.ok(exerciseService.listPublished());
+    }
+
+    /** Admin: list all exercises */
+    @GetMapping
+    public ResponseEntity<?> listAll() {
+        return ResponseEntity.ok(exerciseService.listAll());
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<?> get(@PathVariable Long id) {
+        return ResponseEntity.ok(exerciseService.getWithVersion(id));
+    }
+
+    @GetMapping("/{id}/versions")
+    public ResponseEntity<?> versions(@PathVariable Long id) {
+        return ResponseEntity.ok(exerciseService.listVersions(id));
+    }
+
+    @PostMapping
+    public ResponseEntity<?> create(@Valid @RequestBody ExerciseCreateDto dto) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(exerciseService.create(dto));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<?> update(@PathVariable Long id, @Valid @RequestBody ExerciseCreateDto dto) {
+        return ResponseEntity.ok(exerciseService.update(id, dto));
+    }
+
+    @PostMapping("/{id}/publish")
+    public ResponseEntity<?> publish(@PathVariable Long id) {
+        return ResponseEntity.ok(exerciseService.publish(id));
+    }
+
+    @PostMapping("/{id}/unpublish")
+    public ResponseEntity<?> unpublish(@PathVariable Long id) {
+        return ResponseEntity.ok(exerciseService.unpublish(id));
+    }
+
+    @PostMapping("/{id}/rollback/{versionNumber}")
+    public ResponseEntity<?> rollback(@PathVariable Long id, @PathVariable Integer versionNumber) {
+        return ResponseEntity.ok(exerciseService.rollback(id, versionNumber));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> delete(@PathVariable Long id) {
+        exerciseService.delete(id);
+        return ResponseEntity.ok(Map.of("message", "Deleted"));
+    }
+}

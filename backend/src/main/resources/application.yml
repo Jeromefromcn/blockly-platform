@@ -1,0 +1,25 @@
+spring:
+  datasource:
+    url: jdbc:mysql://${DB_HOST:db}:3306/${DB_NAME:blocklydb}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=UTF-8
+    username: ${DB_USER:blockly}
+    password: ${DB_PASS:blockly123}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: false
+    database-platform: org.hibernate.dialect.MySQLDialect
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+
+server:
+  port: 8081
+
+sandbox:
+  url: ${SANDBOX_URL:http://sandbox:3000}
+
+logging:
+  level:
+    com.blocklyplatform: INFO

@@ -1,0 +1,62 @@
+version: "3.9"
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: blockly_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_DATABASE: blocklydb
+      MYSQL_USER: blockly
+      MYSQL_PASSWORD: blockly123
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - blockly_net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-ublockly", "-pblockly123"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  sandbox:
+    build: ./sandbox
+    container_name: blockly_sandbox
+    restart: unless-stopped
+    networks:
+      - blockly_net
+
+  backend:
+    build: ./backend
+    container_name: blockly_backend
+    restart: unless-stopped
+    environment:
+      DB_HOST: db
+      DB_NAME: blocklydb
+      DB_USER: blockly
+      DB_PASS: blockly123
+      SANDBOX_URL: http://sandbox:3000
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - blockly_net
+
+  frontend:
+    build: ./frontend
+    container_name: blockly_frontend
+    restart: unless-stopped
+    ports:
+      - "8090:80"
+    depends_on:
+      - backend
+    networks:
+      - blockly_net
+
+volumes:
+  db_data:
+
+networks:
+  blockly_net:
+    driver: bridge

@@ -77,15 +77,21 @@ public class AutoGradingService {
 
             Scriptable scope = cx.initSafeStandardObjects();
 
-            // Capture print/console output
+            // Capture print/console output (supports both print() and window.alert())
             StringBuilder output = new StringBuilder();
-            ScriptableObject.putProperty(scope, "print", new BaseFunction() {
+            BaseFunction captureFunc = new BaseFunction() {
                 @Override
                 public Object call(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
                     for (Object arg : args) output.append(Context.toString(arg));
                     return Undefined.instance;
                 }
-            });
+            };
+            ScriptableObject.putProperty(scope, "print", captureFunc);
+
+            // Mock window.alert() for compatibility with old Blockly exports
+            ScriptableObject windowObj = (ScriptableObject) cx.newObject(scope);
+            ScriptableObject.putProperty(windowObj, "alert", captureFunc);
+            ScriptableObject.putProperty(scope, "window", windowObj);
 
             Object result = cx.evaluateString(scope, code, "<grading>", 1, null);
             if (result != null && result != Undefined.instance) {

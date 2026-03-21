@@ -29,6 +29,9 @@ public class ExerciseVersion {
     @Column(name = "expected_output", nullable = false, columnDefinition = "TEXT")
     private String expectedOutput;
 
+    @Column(name = "grading_mode", nullable = false, length = 20)
+    private String gradingMode = "OUTPUT_MATCH";
+
     @Column(name = "created_by")
     private String createdBy;
 

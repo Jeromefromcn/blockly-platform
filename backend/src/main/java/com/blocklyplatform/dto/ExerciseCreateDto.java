@@ -15,5 +15,6 @@ public class ExerciseCreateDto {
     private String blocklyState;
     @NotBlank
     private String expectedOutput;
+    private String gradingMode = "OUTPUT_MATCH";
     private String createdBy;
 }

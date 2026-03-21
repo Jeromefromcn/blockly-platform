@@ -25,6 +25,15 @@ const S = {
   empty: { textAlign: 'center', color: '#a0aec0', padding: '60px 0', fontSize: '1rem' },
 };
 
+function getClientId() {
+  let id = localStorage.getItem('clientId');
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem('clientId', id);
+  }
+  return id;
+}
+
 export default function Home() {
   const [exercises, setExercises] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -42,12 +51,12 @@ export default function Home() {
 
   const handleLike = async (e, exId) => {
     e.stopPropagation();
-    if (liked[exId]) return;
     try {
-      const res = await fetch(`/api/exercises/${exId}/like`, { method: 'POST' });
+      const clientId = getClientId();
+      const res = await fetch(`/api/exercises/${exId}/like?clientId=${encodeURIComponent(clientId)}`, { method: 'POST' });
       const data = await res.json();
       setExercises(prev => prev.map(ex => ex.id === exId ? { ...ex, likeCount: data.likeCount } : ex));
-      const newLiked = { ...liked, [exId]: true };
+      const newLiked = { ...liked, [exId]: data.liked };
       setLiked(newLiked);
       localStorage.setItem('liked', JSON.stringify(newLiked));
     } catch {}

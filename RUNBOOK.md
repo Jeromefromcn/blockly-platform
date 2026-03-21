@@ -283,8 +283,10 @@ docker compose down && docker compose up -d
 | 方法 | 路徑 | 說明 |
 |------|------|------|
 | POST | /api/submissions/import | 批量導入學生答案（JSON 文件上傳） |
+| POST | /api/submissions/import-zip | 批量導入（ZIP 壓縮包，含 JSON 文件） |
 | GET | /api/submissions | 查看提交記錄（可按 exerciseId 篩選） |
 | GET | /api/submissions/{id} | 獲取提交詳情 |
+| GET | /api/submissions/export-csv?exerciseId= | 導出成績 CSV（exerciseId 可選） |
 | PATCH | /api/submissions/{id}/grade | 老師覆蓋評分（tutorScore + tutorComment） |
 | DELETE | /api/submissions/{id} | 刪除提交記錄 |
 
@@ -295,6 +297,83 @@ docker compose down && docker compose up -d
 {
   "exerciseId": 1,
   "studentName": "學生姓名",
-  "blocklyState": { ... }
+  "blocklyState": { ... },
+  "generatedCode": "function add(a,b){return a+b;}"
+}
+```
+
+`generatedCode` 字段可選，若存在則自動評分（`autoScore`）。
+
+---
+
+## 十二、更新日誌
+
+### 2026-03-22 — 新增測試案例文件
+
+新增完整的測試案例說明文件：
+- `TEST_CASES.md` — 英文版，涵蓋 `AutoGradingService` 與 `ExerciseService` 共 12 個單元測試、執行方式及覆蓋缺口與改善建議
+- `TEST_CASES_ZH.md` — 繁體中文版，內容相同
+
+---
+
+### 2026-03-22 — 後端：自動評分、ZIP 導入、CSV 導出、單元測試
+
+**修改文件：**
+- `backend/pom.xml` — 添加依賴：Mozilla Rhino 1.7.14、Apache Commons CSV 1.10.0、spring-boot-starter-test、H2（測試）
+- `backend/src/main/resources/schema.sql` — `exercise_versions` 添加 `grading_mode` 列，`grades` 添加 `auto_score` 列
+- `backend/src/main/java/com/blocklyplatform/entity/ExerciseVersion.java` — 添加 `gradingMode` 字段
+- `backend/src/main/java/com/blocklyplatform/entity/Grade.java` — 添加 `autoScore` 字段
+- `backend/src/main/java/com/blocklyplatform/dto/ExerciseCreateDto.java` — 添加 `gradingMode` 字段（默認 `OUTPUT_MATCH`）
+- `backend/src/main/java/com/blocklyplatform/service/ExerciseService.java` — `saveVersion` 保存 `gradingMode`，`toVersionMap` 包含 `gradingMode`
+- `backend/src/main/java/com/blocklyplatform/service/AutoGradingService.java` — 新增，使用 Mozilla Rhino 執行 JS 自動評分，支持 `OUTPUT_MATCH` / `TRACE_MATCH`
+- `backend/src/main/java/com/blocklyplatform/service/GradingService.java` — 注入 `AutoGradingService`，`batchImport` 支持自動評分，新增 `batchImportZip`、`exportGradesCsv`，`listSubmissions` 返回 `autoScore`
+- `backend/src/main/java/com/blocklyplatform/util/ByteArrayMultipartFile.java` — 新增，ZIP 解壓內部使用的 MultipartFile 實現
+- `backend/src/main/java/com/blocklyplatform/controller/SubmissionController.java` — 添加 `POST /api/submissions/import-zip`、`GET /api/submissions/export-csv` 端點
+- `backend/src/test/java/com/blocklyplatform/service/AutoGradingServiceTest.java` — 新增，8 個測試用例
+- `backend/src/test/java/com/blocklyplatform/service/ExerciseServiceTest.java` — 新增，4 個 Mockito 測試用例
+- `backend/src/test/resources/application.properties` — 新增，H2 內存數據庫測試配置
+
+**數據庫變更（在線執行）：**
+```bash
+docker exec blockly_db mysql -uroot -proot123 blocklydb -e "ALTER TABLE exercise_versions ADD COLUMN grading_mode VARCHAR(20) NOT NULL DEFAULT 'OUTPUT_MATCH';"
+docker exec blockly_db mysql -uroot -proot123 blocklydb -e "ALTER TABLE grades ADD COLUMN auto_score INT DEFAULT NULL;"
+```
+
+**評分模式說明：**
+- `OUTPUT_MATCH`：`expected_output` 為 JSON 數組 `[{"input": "add(1,2)", "expected": "3"}]`，逐條執行對比輸出
+- `TRACE_MATCH`：`expected_output` 為 JSON 數組 `["step1", "step2"]`，對比 `__trace` 執行軌跡
+
+### 2026-03-22 — 前端：運行按鈕、評分模式、輸出面板
+
+**修改文件：**
+- `frontend/src/pages/AdminEditor.jsx`
+- `frontend/src/pages/Workspace.jsx`
+
+**AdminEditor.jsx：**
+- 在頭部工具欄（Save 旁）新增綠色 **Run** 按鈕，點擊後執行當前參考解答積木生成的 JavaScript。
+- 新增**評分模式**下拉選擇框（`OUTPUT_MATCH` / `TRACE_MATCH`），保存在 form state 的 `gradingMode` 字段，隨題目保存一并傳至 API。
+- 預期輸出輸入框改為條件顯示：
+  - `OUTPUT_MATCH` 模式顯示「測試用例（JSON 數組）」，佔位符：`[{"input": "add(1, 2)", "expected": "3"}]`
+  - `TRACE_MATCH` 模式顯示「預期追蹤（JSON 數組）」，佔位符：`["step1", "loop", "end"]`
+- 點擊 Run 後，在積木編輯器卡片下方顯示輸出面板——深色背景、等寬字體，錯誤時以紅色顯示。
+
+**Workspace.jsx：**
+- 在主區域積木編輯器上方的工具欄新增綠色 **Run** 按鈕。
+- 點擊 Run 後，在積木編輯器下方顯示輸出面板，展示捕獲的 `console.log` 輸出或錯誤信息。
+- 清空工作區時同步清除輸出面板。
+
+**JS 執行實現（兩個文件共用方案）：**
+```javascript
+function runCode(code) {
+  const logs = [];
+  const mockConsole = { log: (...args) => logs.push(args.map(String).join(' ')) };
+  try {
+    const fn = new Function('console', code);
+    const result = fn(mockConsole);
+    if (result !== undefined) logs.push(String(result));
+    return { output: logs.join('\n') || '(no output)', error: null };
+  } catch (e) {
+    return { output: null, error: e.message };
+  }
 }
 ```

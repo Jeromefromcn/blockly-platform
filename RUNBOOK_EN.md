@@ -283,8 +283,10 @@ Monitoring:
 | Method | Path | Description |
 |--------|------|-------------|
 | POST | /api/submissions/import | Batch import student answers (JSON file upload) |
+| POST | /api/submissions/import-zip | Batch import from ZIP archive containing JSON files |
 | GET | /api/submissions | List submissions (filter by exerciseId optional) |
 | GET | /api/submissions/{id} | Get submission detail |
+| GET | /api/submissions/export-csv?exerciseId= | Export grades as CSV (exerciseId optional) |
 | PATCH | /api/submissions/{id}/grade | Tutor overrides grade (tutorScore + tutorComment) |
 | DELETE | /api/submissions/{id} | Delete submission |
 
@@ -295,6 +297,83 @@ Each JSON file must follow this structure:
 {
   "exerciseId": 1,
   "studentName": "Student Name",
-  "blocklyState": { ... }
+  "blocklyState": { ... },
+  "generatedCode": "function add(a,b){return a+b;}"
+}
+```
+
+The `generatedCode` field is optional. When present, the submission is automatically graded and an `autoScore` (0–100) is stored.
+
+---
+
+## 12. Changelog
+
+### 2026-03-22 — Test Case Documentation Added
+
+Added comprehensive test case documentation:
+- `TEST_CASES.md` — English, covers all 12 unit tests across `AutoGradingService` and `ExerciseService`, how to run tests, and coverage gaps with suggestions
+- `TEST_CASES_ZH.md` — Traditional Chinese version of the same document
+
+---
+
+### 2026-03-22 — Backend: Auto-Grading, ZIP Import, CSV Export, Unit Tests
+
+**Files changed:**
+- `backend/pom.xml` — Added dependencies: Mozilla Rhino 1.7.14, Apache Commons CSV 1.10.0, spring-boot-starter-test, H2 (test scope)
+- `backend/src/main/resources/schema.sql` — Added `grading_mode` to `exercise_versions`, `auto_score` to `grades`
+- `backend/src/main/java/com/blocklyplatform/entity/ExerciseVersion.java` — Added `gradingMode` field
+- `backend/src/main/java/com/blocklyplatform/entity/Grade.java` — Added `autoScore` field
+- `backend/src/main/java/com/blocklyplatform/dto/ExerciseCreateDto.java` — Added `gradingMode` field (default `OUTPUT_MATCH`)
+- `backend/src/main/java/com/blocklyplatform/service/ExerciseService.java` — `saveVersion` persists `gradingMode`; `toVersionMap` includes `gradingMode`
+- `backend/src/main/java/com/blocklyplatform/service/AutoGradingService.java` — New service. Uses Mozilla Rhino to execute JS and grade submissions; supports `OUTPUT_MATCH` and `TRACE_MATCH` modes; returns score 0–100
+- `backend/src/main/java/com/blocklyplatform/service/GradingService.java` — Injects `AutoGradingService`; `batchImport` auto-grades when `generatedCode` is present; added `batchImportZip`, `exportGradesCsv`; `listSubmissions` now includes `autoScore`
+- `backend/src/main/java/com/blocklyplatform/util/ByteArrayMultipartFile.java` — New utility class wrapping byte arrays as `MultipartFile` for ZIP extraction
+- `backend/src/main/java/com/blocklyplatform/controller/SubmissionController.java` — Added `POST /api/submissions/import-zip` and `GET /api/submissions/export-csv` endpoints
+- `backend/src/test/java/com/blocklyplatform/service/AutoGradingServiceTest.java` — New, 8 test cases (OUTPUT_MATCH correct/wrong/half, TRACE_MATCH correct/wrong, invalid JS, empty/null expected output)
+- `backend/src/test/java/com/blocklyplatform/service/ExerciseServiceTest.java` — New, 4 Mockito test cases (like new/existing clientId, publish with no version, soft delete)
+- `backend/src/test/resources/application.properties` — New, H2 in-memory DB config for tests
+
+**Live database migration:**
+```bash
+docker exec blockly_db mysql -uroot -proot123 blocklydb -e "ALTER TABLE exercise_versions ADD COLUMN grading_mode VARCHAR(20) NOT NULL DEFAULT 'OUTPUT_MATCH';"
+docker exec blockly_db mysql -uroot -proot123 blocklydb -e "ALTER TABLE grades ADD COLUMN auto_score INT DEFAULT NULL;"
+```
+
+**Grading mode details:**
+- `OUTPUT_MATCH`: `expected_output` is a JSON array `[{"input": "add(1,2)", "expected": "3"}]`; each test case is executed with Rhino and output compared
+- `TRACE_MATCH`: `expected_output` is a JSON array `["step1", "step2"]`; compared against `__trace` array populated during execution
+
+### 2026-03-22 — Frontend: Run Button, Grading Mode, Output Panel
+
+**Files changed:**
+- `frontend/src/pages/AdminEditor.jsx`
+- `frontend/src/pages/Workspace.jsx`
+
+**AdminEditor.jsx:**
+- Added green **Run** button in the header toolbar (next to Save). Executes the current reference-solution workspace blocks as JavaScript.
+- Added **Grading Mode** dropdown (`OUTPUT_MATCH` / `TRACE_MATCH`) stored in form state as `gradingMode` and sent to the API on save.
+- The Expected Output textarea is now conditional:
+  - `OUTPUT_MATCH` mode shows "Test Cases (JSON array)" with placeholder `[{"input": "add(1, 2)", "expected": "3"}]`
+  - `TRACE_MATCH` mode shows "Expected Trace (JSON array)" with placeholder `["step1", "loop", "end"]`
+- Output panel appears below the Blockly workspace card after Run is clicked — dark background, monospace font, red text on error.
+
+**Workspace.jsx:**
+- Added green **Run** button in the main area toolbar above the Blockly workspace.
+- Output panel appears below the workspace after Run is clicked, showing captured `console.log` output or error message.
+- Clearing the workspace also clears the output panel.
+
+**JS execution implementation (shared pattern in both files):**
+```javascript
+function runCode(code) {
+  const logs = [];
+  const mockConsole = { log: (...args) => logs.push(args.map(String).join(' ')) };
+  try {
+    const fn = new Function('console', code);
+    const result = fn(mockConsole);
+    if (result !== undefined) logs.push(String(result));
+    return { output: logs.join('\n') || '(no output)', error: null };
+  } catch (e) {
+    return { output: null, error: e.message };
+  }
 }
 ```

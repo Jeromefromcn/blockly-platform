@@ -10,20 +10,37 @@ const S = {
   label: { display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#718096', marginBottom: 5 },
   input: { width: '100%', padding: '9px 12px', border: '1px solid #cbd5e0', borderRadius: 6, fontSize: '0.92rem', outline: 'none', marginBottom: 16 },
   textarea: { width: '100%', padding: '9px 12px', border: '1px solid #cbd5e0', borderRadius: 6, fontSize: '0.88rem', fontFamily: 'monospace', resize: 'vertical', outline: 'none', marginBottom: 16 },
+  select: { width: '100%', padding: '9px 12px', border: '1px solid #cbd5e0', borderRadius: 6, fontSize: '0.92rem', outline: 'none', marginBottom: 16, background: '#fff' },
   row: { display: 'flex', gap: 20 },
   btn: { padding: '10px 24px', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: '0.92rem' },
   btnRow: { display: 'flex', gap: 12 },
+  outputPanel: { background: '#1a202c', color: '#e2e8f0', borderRadius: 6, padding: '12px 16px', fontFamily: 'monospace', fontSize: '0.85rem', minHeight: 80, marginTop: 12, whiteSpace: 'pre-wrap', wordBreak: 'break-all' },
+  outputError: { color: '#fc8181' },
 };
+
+function runCode(code) {
+  const logs = [];
+  const mockConsole = { log: (...args) => logs.push(args.map(String).join(' ')) };
+  try {
+    const fn = new Function('console', code);
+    const result = fn(mockConsole);
+    if (result !== undefined) logs.push(String(result));
+    return { output: logs.join('\n') || '(no output)', error: null };
+  } catch (e) {
+    return { output: null, error: e.message };
+  }
+}
 
 export default function AdminEditor() {
   const { id } = useParams();
   const navigate = useNavigate();
   const isEdit = !!id;
 
-  const [form, setForm] = useState({ code: '', title: '', description: '', expectedOutput: '', createdBy: 'admin' });
+  const [form, setForm] = useState({ code: '', title: '', description: '', expectedOutput: '', createdBy: 'admin', gradingMode: 'OUTPUT_MATCH' });
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
   const [initialBlocklyState, setInitialBlocklyState] = useState(null);
+  const [runResult, setRunResult] = useState(null);
   const wsRef = useRef(null);
 
   useEffect(() => {
@@ -37,6 +54,7 @@ export default function AdminEditor() {
           description: data.version?.description || '',
           expectedOutput: data.version?.expectedOutput || '',
           createdBy: data.version?.createdBy || 'admin',
+          gradingMode: data.version?.gradingMode || 'OUTPUT_MATCH',
         });
         // Load saved blockly state for reference solution
         if (data.version?.blocklyState) {
@@ -77,6 +95,13 @@ export default function AdminEditor() {
     }
   };
 
+  const handleRun = () => {
+    if (!wsRef.current) return;
+    const code = wsRef.current.getCode();
+    const result = runCode(code);
+    setRunResult(result);
+  };
+
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
 
   if (loading) return <div style={{ padding: 40 }}>Loading...</div>;
@@ -88,6 +113,8 @@ export default function AdminEditor() {
         <div style={S.btnRow}>
           <button style={{ ...S.btn, background: '#e2e8f0', color: '#4a5568' }}
             onClick={() => navigate('/admin')}>Cancel</button>
+          <button style={{ ...S.btn, background: '#38a169', color: '#fff' }}
+            onClick={handleRun}>Run</button>
           <button style={{ ...S.btn, background: '#2b6cb0', color: '#fff' }}
             onClick={handleSave} disabled={saving}>
             {saving ? 'Saving...' : 'Save'}
@@ -111,9 +138,29 @@ export default function AdminEditor() {
             <textarea style={S.textarea} rows={6} value={form.description}
               onChange={set('description')} placeholder="Describe the exercise requirements..." />
 
-            <label style={S.label}>Expected Output (what the program should print)</label>
-            <textarea style={{ ...S.textarea, background: '#f7fafc' }} rows={4}
-              value={form.expectedOutput} onChange={set('expectedOutput')} placeholder="Hello World" />
+            <label style={S.label}>Grading Mode</label>
+            <select style={S.select} value={form.gradingMode} onChange={set('gradingMode')}>
+              <option value="OUTPUT_MATCH">OUTPUT_MATCH</option>
+              <option value="TRACE_MATCH">TRACE_MATCH</option>
+            </select>
+
+            {form.gradingMode === 'OUTPUT_MATCH' && (
+              <>
+                <label style={S.label}>Test Cases (JSON array)</label>
+                <textarea style={{ ...S.textarea, background: '#f7fafc' }} rows={4}
+                  value={form.expectedOutput} onChange={set('expectedOutput')}
+                  placeholder={'[{"input": "add(1, 2)", "expected": "3"}]'} />
+              </>
+            )}
+
+            {form.gradingMode === 'TRACE_MATCH' && (
+              <>
+                <label style={S.label}>Expected Trace (JSON array)</label>
+                <textarea style={{ ...S.textarea, background: '#f7fafc' }} rows={4}
+                  value={form.expectedOutput} onChange={set('expectedOutput')}
+                  placeholder={'["step1", "loop", "end"]'} />
+              </>
+            )}
           </div>
         </div>
 
@@ -134,6 +181,14 @@ export default function AdminEditor() {
                 />
               )}
             </div>
+            {runResult && (
+              <div style={{ marginTop: 16 }}>
+                <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#718096', marginBottom: 4 }}>Output:</div>
+                <div style={{ ...S.outputPanel, ...(runResult.error ? S.outputError : {}) }}>
+                  {runResult.error ? `Error: ${runResult.error}` : runResult.output}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

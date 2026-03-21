@@ -122,15 +122,19 @@ public class ExerciseService {
     }
 
     @Transactional
-    public Map<String, Object> like(Long id) {
+    public Map<String, Object> like(Long id, String clientId) {
         Exercise ex = exerciseRepo.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new RuntimeException("Exercise not found"));
+        if (likeRepo.findByExerciseIdAndClientId(id, clientId).isPresent()) {
+            return Map.of("exerciseId", id, "likeCount", ex.getLikeCount(), "liked", true);
+        }
         Like like = new Like();
         like.setExercise(ex);
+        like.setClientId(clientId);
         likeRepo.save(like);
         ex.setLikeCount(ex.getLikeCount() + 1);
         exerciseRepo.save(ex);
-        return Map.of("exerciseId", id, "likeCount", ex.getLikeCount());
+        return Map.of("exerciseId", id, "likeCount", ex.getLikeCount(), "liked", true);
     }
 
     private ExerciseVersion saveVersion(Exercise ex, ExerciseCreateDto dto) {
@@ -141,6 +145,7 @@ public class ExerciseService {
         version.setDescription(dto.getDescription());
         version.setBlocklyState(dto.getBlocklyState());
         version.setExpectedOutput(dto.getExpectedOutput());
+        version.setGradingMode(dto.getGradingMode() != null ? dto.getGradingMode() : "OUTPUT_MATCH");
         version.setCreatedBy(dto.getCreatedBy());
         return versionRepo.save(version);
     }
@@ -165,6 +170,7 @@ public class ExerciseService {
         m.put("description", v.getDescription());
         m.put("blocklyState", v.getBlocklyState());
         m.put("expectedOutput", v.getExpectedOutput());
+        m.put("gradingMode", v.getGradingMode());
         m.put("createdBy", v.getCreatedBy());
         m.put("createdAt", v.getCreatedAt());
         return m;

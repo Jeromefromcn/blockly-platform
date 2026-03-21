@@ -20,6 +20,9 @@ public class Grade {
     @Column(name = "tutor_score")
     private Integer tutorScore;
 
+    @Column(name = "auto_score")
+    private Integer autoScore;
+
     @Column(name = "tutor_comment", columnDefinition = "TEXT")
     private String tutorComment;
 

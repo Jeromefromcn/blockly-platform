@@ -63,8 +63,8 @@ public class ExerciseController {
     }
 
     @PostMapping("/{id}/like")
-    public ResponseEntity<?> like(@PathVariable Long id) {
-        return ResponseEntity.ok(exerciseService.like(id));
+    public ResponseEntity<?> like(@PathVariable Long id, @RequestParam String clientId) {
+        return ResponseEntity.ok(exerciseService.like(id, clientId));
     }
 
     @DeleteMapping("/{id}")

@@ -4,13 +4,15 @@
 
 | Item | Description |
 |------|-------------|
-| Function | Blockly visual programming exercise platform with exercise management, student submissions, and auto-grading |
+| Function | Blockly visual programming exercise platform with exercise management, student submissions, batch import grading, and likes |
 | Frontend | React 18 + Blockly 12.5.0, port **8090** |
 | Backend | Java 17 + Spring Boot 3.2, internal port 8081 |
-| Sandbox | Node.js 20, internal port 3000, executes student code |
 | Database | MySQL 8.0, persistent storage |
+| Monitoring | Prometheus (port 9090) + Grafana (port 3001) |
 | Deployment | Docker + Docker Compose |
 | Code Hosting | GitHub |
+
+> **Note**: v2 removes the Node.js sandbox. All grading logic is handled entirely by the Java backend.
 
 ---
 
@@ -45,7 +47,7 @@ cd blockly-platform
 ### 3.2 Start Services
 
 ```bash
-sudo docker compose up -d --build
+docker compose up -d --build
 ```
 
 The first build downloads dependencies and compiles code — this may take **5–10 minutes**. Please be patient.
@@ -53,8 +55,8 @@ The first build downloads dependencies and compiles code — this may take **5�
 ### 3.3 Verify Startup
 
 ```bash
-# Check container status (should show 4 containers, all "Up")
-sudo docker compose ps
+# Check container status (should show 5 containers, all "Up")
+docker compose ps
 
 # Test frontend accessibility
 curl -o /dev/null -w "%{http_code}" http://localhost:8090
@@ -71,8 +73,10 @@ curl http://localhost:8090/api/exercises/published
 |------|-----|
 | Student exercise page | `http://SERVER_IP:8090` |
 | Admin panel | `http://SERVER_IP:8090/admin` |
+| Prometheus | `http://SERVER_IP:9090` |
+| Grafana | `http://SERVER_IP:3001` (login: admin / admin123) |
 
-> If external access fails, open port 8090 in your cloud provider's firewall (e.g., GCP firewall rules).
+> If external access fails, open the relevant ports in your cloud provider's firewall (e.g., GCP firewall rules).
 
 ---
 
@@ -81,23 +85,23 @@ curl http://localhost:8090/api/exercises/published
 ### Start Services
 ```bash
 cd blockly-platform
-sudo docker compose up -d
+docker compose up -d
 ```
 
 ### Stop Services
 ```bash
-sudo docker compose down
+docker compose down
 ```
-> Data is stored in the Docker Volume `blockly-platform_db_data`. Stopping services does **not** delete data.
+> Data is stored in Docker Volumes (`db_data`, `prometheus_data`, `grafana_data`). Stopping services does **not** delete data.
 
 ### Restart Services
 ```bash
-sudo docker compose restart
+docker compose restart
 ```
 
 ### Check Container Status
 ```bash
-sudo docker compose ps
+docker compose ps
 ```
 
 ---
@@ -113,20 +117,17 @@ cd blockly-platform
 git pull
 
 # 2. Rebuild and restart (only changed services are rebuilt)
-sudo docker compose up -d --build
+docker compose up -d --build
 ```
 
 ### Update a Single Service
 
 ```bash
 # Rebuild only the frontend
-sudo docker compose up -d --build frontend
+docker compose up -d --build frontend
 
 # Rebuild only the backend
-sudo docker compose up -d --build backend
-
-# Rebuild only the sandbox
-sudo docker compose up -d --build sandbox
+docker compose up -d --build backend
 ```
 
 ---
@@ -135,16 +136,17 @@ sudo docker compose up -d --build sandbox
 
 ```bash
 # All services
-sudo docker compose logs
+docker compose logs
 
 # Follow a specific service in real time (Ctrl+C to exit)
-sudo docker compose logs -f frontend
-sudo docker compose logs -f backend
-sudo docker compose logs -f sandbox
-sudo docker compose logs -f db
+docker compose logs -f frontend
+docker compose logs -f backend
+docker compose logs -f db
+docker compose logs -f prometheus
+docker compose logs -f grafana
 
 # Last 100 lines
-sudo docker compose logs --tail=100 backend
+docker compose logs --tail=100 backend
 ```
 
 ---
@@ -154,20 +156,26 @@ sudo docker compose logs --tail=100 backend
 ### Enter the Database Shell
 
 ```bash
-sudo docker exec -it blockly_db mysql -ublockly -pblockly123 blocklydb
+docker exec -it blockly_db mysql -ublockly -pblockly123 blocklydb
 ```
 
 Common SQL queries:
 ```sql
 -- List all exercises
-SELECT id, code, title, status, current_version_number FROM exercises;
+SELECT id, code, title, status, current_version_number, like_count FROM exercises;
 
 -- View submissions with scores
-SELECT s.id, e.title, s.student_name, g.auto_score
+SELECT s.id, e.title, s.student_name, g.tutor_score, g.tutor_comment
 FROM submissions s
 JOIN exercises e ON s.exercise_id = e.id
 LEFT JOIN grades g ON g.submission_id = s.id
 ORDER BY s.submitted_at DESC;
+
+-- View like counts per exercise
+SELECT e.title, COUNT(l.id) AS likes
+FROM likes l
+JOIN exercises e ON l.exercise_id = e.id
+GROUP BY e.id;
 
 -- Exit
 exit
@@ -176,13 +184,13 @@ exit
 ### Backup Data
 
 ```bash
-sudo docker exec blockly_db mysqldump -ublockly -pblockly123 blocklydb > backup_$(date +%Y%m%d).sql
+docker exec blockly_db mysqldump -ublockly -pblockly123 blocklydb > backup_$(date +%Y%m%d).sql
 ```
 
 ### Restore Data
 
 ```bash
-cat backup_20260101.sql | sudo docker exec -i blockly_db mysql -ublockly -pblockly123 blocklydb
+cat backup_20260101.sql | docker exec -i blockly_db mysql -ublockly -pblockly123 blocklydb
 ```
 
 ---
@@ -197,7 +205,7 @@ git log --oneline
 git checkout <commit-hash>
 
 # Rebuild
-sudo docker compose up -d --build
+docker compose up -d --build
 ```
 
 ---
@@ -205,31 +213,25 @@ sudo docker compose up -d --build
 ## 9. Troubleshooting
 
 ### Service Unreachable (External)
-1. Confirm port 8090 is open in your cloud firewall
-2. Verify containers are running: `sudo docker compose ps`
+1. Confirm required ports (8090, 9090, 3001) are open in your cloud firewall
+2. Verify containers are running: `docker compose ps`
 
 ### Backend Fails to Start
 ```bash
 # Check logs for the error
-sudo docker compose logs backend
+docker compose logs backend
 
-# Common cause: database not ready yet — wait and retry
-sudo docker compose restart backend
+# Common cause: database not ready yet (MySQL healthcheck start_period is 90s)
+docker compose restart backend
 ```
 
 ### Database Connection Error
 ```bash
 # Check db container health
-sudo docker inspect blockly_db | grep -A5 Health
+docker inspect blockly_db | grep -A5 Health
 
 # Full restart
-sudo docker compose down && sudo docker compose up -d
-```
-
-### Code Execution Timeout
-The sandbox defaults to a 10-second timeout. To change it, edit the `timeout` default in `sandbox/src/index.js` and rebuild:
-```bash
-sudo docker compose up -d --build sandbox
+docker compose down && docker compose up -d
 ```
 
 ---
@@ -243,29 +245,56 @@ External Request :8090
   Static files + reverse proxy
        │
   [blockly_backend] Spring Boot :8081
-  Business logic + grading
-       │              │
-  [blockly_db]   [blockly_sandbox]
-  MySQL database  Node.js code runner
+  Business logic + grading (pure Java, no sandbox)
        │
-  [Docker Volume: db_data]
-  Persistent data storage
+  [blockly_db] MySQL 8.0
+  Persistent data (Volume: db_data)
+
+Monitoring:
+  [blockly_backend] /actuator/prometheus
+       │
+  [blockly_prometheus] :9090  ←── scrape interval 10s (Volume: prometheus_data)
+       │
+  [blockly_grafana] :3001 (Volume: grafana_data)
 ```
 
 ---
 
 ## 11. API Reference
 
+### Exercise Management
+
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | /api/exercises/published | Student: list published exercises |
 | GET | /api/exercises | Admin: list all exercises |
+| GET | /api/exercises/{id} | Get exercise detail (with current version) |
+| GET | /api/exercises/{id}/versions | List all versions of an exercise |
 | POST | /api/exercises | Create exercise |
 | PUT | /api/exercises/{id} | Update exercise (creates new version) |
 | POST | /api/exercises/{id}/publish | Publish exercise |
 | POST | /api/exercises/{id}/unpublish | Unpublish exercise |
 | POST | /api/exercises/{id}/rollback/{v} | Roll back to specific version |
+| POST | /api/exercises/{id}/like | Like an exercise |
 | DELETE | /api/exercises/{id} | Delete exercise (soft delete) |
-| POST | /api/submissions | Student submits answer |
-| GET | /api/submissions | List all submissions |
-| PATCH | /api/submissions/{id}/grade | Tutor overrides score |
+
+### Submissions & Grading
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | /api/submissions/import | Batch import student answers (JSON file upload) |
+| GET | /api/submissions | List submissions (filter by exerciseId optional) |
+| GET | /api/submissions/{id} | Get submission detail |
+| PATCH | /api/submissions/{id}/grade | Tutor overrides grade (tutorScore + tutorComment) |
+| DELETE | /api/submissions/{id} | Delete submission |
+
+### Batch Import File Format
+
+Each JSON file must follow this structure:
+```json
+{
+  "exerciseId": 1,
+  "studentName": "Student Name",
+  "blocklyState": { ... }
+}
+```

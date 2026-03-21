@@ -55,11 +55,13 @@ export default function Workspace() {
     if (!name) { alert('Please enter your name before exporting.'); return; }
 
     const state = wsRef.current.getState();
+    const code = wsRef.current.getCode();
     const payload = {
       exerciseId: parseInt(id),
       exerciseTitle: exercise?.title || '',
       studentName: name,
       blocklyState: state,
+      generatedCode: code,
       exportedAt: new Date().toISOString(),
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });

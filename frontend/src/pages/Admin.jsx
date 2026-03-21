@@ -75,7 +75,7 @@ export default function Admin() {
   };
 
   const openGrade = (sub) => {
-    setGrading({ submissionId: sub.id, sourceFilename: sub.sourceFilename });
+    setGrading({ submissionId: sub.id, sourceFilename: sub.sourceFilename, autoScore: sub.autoScore ?? null });
     setGradeForm({ score: sub.tutorScore ?? '', comment: sub.tutorComment ?? '' });
   };
 
@@ -160,9 +160,14 @@ export default function Admin() {
                   <td style={{ ...S.td, fontFamily: 'monospace', fontSize: '0.8rem', color: '#4a5568' }}>{s.sourceFilename}</td>
                   <td style={S.td}>{new Date(s.submittedAt).toLocaleString()}</td>
                   <td style={{ ...S.td, fontWeight: 700 }}>
+                    {s.autoScore != null && (
+                      <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 10, fontSize: '0.75rem', fontWeight: 600, background: '#ebf8ff', color: '#2b6cb0', marginRight: 6 }}>
+                        Auto: {s.autoScore}
+                      </span>
+                    )}
                     {s.tutorScore != null
-                      ? <span style={{ color: '#2b6cb0' }}>{s.sourceFilename} · {s.tutorScore}/100</span>
-                      : <span style={{ color: '#a0aec0' }}>Ungraded</span>}
+                      ? <span style={{ color: '#2b6cb0' }}>{s.tutorScore}/100</span>
+                      : <span style={{ color: '#a0aec0', fontWeight: 400 }}>Ungraded</span>}
                   </td>
                   <td style={S.td}>
                     <button style={{ ...S.btn, background: '#ebf8ff', color: '#2b6cb0' }}
@@ -232,6 +237,12 @@ export default function Admin() {
             <p style={{ fontSize: '0.85rem', color: '#718096', marginBottom: 16, fontFamily: 'monospace' }}>
               {grading.sourceFilename}
             </p>
+            {grading.autoScore != null && (
+              <div style={{ background: '#ebf8ff', border: '1px solid #bee3f8', borderRadius: 6, padding: '8px 12px', marginBottom: 14, fontSize: '0.85rem', color: '#2c5282' }}>
+                Auto-grader score: <strong>{grading.autoScore}/100</strong>
+                <span style={{ color: '#718096', marginLeft: 6, fontWeight: 400 }}>(for reference)</span>
+              </div>
+            )}
             <label style={S.label ?? { display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#718096', marginBottom: 5 }}>
               Score (0–100)
             </label>

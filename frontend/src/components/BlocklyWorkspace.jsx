@@ -2,6 +2,12 @@ import { useEffect, useRef } from 'react';
 import * as Blockly from 'blockly';
 import { javascriptGenerator } from 'blockly/javascript';
 
+// Override text_print to use print() instead of window.alert() for compatibility with auto-grader
+javascriptGenerator.forBlock['text_print'] = function(block, generator) {
+  const value = generator.valueToCode(block, 'TEXT', javascriptGenerator.ORDER_NONE) || "''";
+  return 'print(' + value + ');\n';
+};
+
 const TOOLBOX = {
   kind: 'categoryToolbox',
   contents: [

@@ -16,5 +16,6 @@ public class ExerciseCreateDto {
     @NotBlank
     private String expectedOutput;
     private String gradingMode = "OUTPUT_MATCH";
+    private String allowedBlocks;
     private String createdBy;
 }

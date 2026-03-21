@@ -2,6 +2,8 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import BlocklyWorkspace from '../components/BlocklyWorkspace.jsx';
 
+const ALL_CATEGORIES = ['Logic', 'Loops', 'Math', 'Text', 'Variables', 'Functions', 'Lists'];
+
 const S = {
   container: { maxWidth: 1100, margin: '28px auto', padding: '0 20px' },
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
@@ -36,7 +38,8 @@ export default function AdminEditor() {
   const navigate = useNavigate();
   const isEdit = !!id;
 
-  const [form, setForm] = useState({ code: '', title: '', description: '', expectedOutput: '', createdBy: 'admin', gradingMode: 'OUTPUT_MATCH' });
+  const [form, setForm] = useState({ code: '', title: '', description: '', expectedOutput: '', createdBy: 'admin', gradingMode: 'OUTPUT_MATCH', allowedBlocks: null });
+  const [selectedCategories, setSelectedCategories] = useState([...ALL_CATEGORIES]);
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
   const [initialBlocklyState, setInitialBlocklyState] = useState(null);
@@ -48,6 +51,7 @@ export default function AdminEditor() {
     fetch(`/api/exercises/${id}`)
       .then(r => r.json())
       .then(data => {
+        const rawAllowedBlocks = data.version?.allowedBlocks || null;
         setForm({
           code: data.code,
           title: data.title,
@@ -55,7 +59,13 @@ export default function AdminEditor() {
           expectedOutput: data.version?.expectedOutput || '',
           createdBy: data.version?.createdBy || 'admin',
           gradingMode: data.version?.gradingMode || 'OUTPUT_MATCH',
+          allowedBlocks: rawAllowedBlocks,
         });
+        if (rawAllowedBlocks) {
+          try { setSelectedCategories(JSON.parse(rawAllowedBlocks)); } catch { setSelectedCategories([...ALL_CATEGORIES]); }
+        } else {
+          setSelectedCategories([...ALL_CATEGORIES]);
+        }
         // Load saved blockly state for reference solution
         if (data.version?.blocklyState) {
           try {
@@ -74,6 +84,8 @@ export default function AdminEditor() {
     if (!form.expectedOutput.trim()) { alert('Expected output is required.'); return; }
 
     const blocklyState = wsRef.current ? JSON.stringify(wsRef.current.getState()) : '{}';
+    const allSelected = selectedCategories.length === ALL_CATEGORIES.length && ALL_CATEGORIES.every(c => selectedCategories.includes(c));
+    const allowedBlocks = allSelected ? null : JSON.stringify(selectedCategories);
 
     setSaving(true);
     try {
@@ -82,7 +94,7 @@ export default function AdminEditor() {
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, blocklyState }),
+        body: JSON.stringify({ ...form, blocklyState, allowedBlocks }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Save failed');
@@ -161,6 +173,26 @@ export default function AdminEditor() {
                   placeholder={'["step1", "loop", "end"]'} />
               </>
             )}
+
+            <label style={S.label}>Allowed Blocks for Students</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 20px', marginBottom: 16 }}>
+              {ALL_CATEGORIES.map(cat => (
+                <label key={cat} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.88rem', color: '#4a5568', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={selectedCategories.includes(cat)}
+                    onChange={e => {
+                      if (e.target.checked) {
+                        setSelectedCategories(prev => [...prev, cat]);
+                      } else {
+                        setSelectedCategories(prev => prev.filter(c => c !== cat));
+                      }
+                    }}
+                  />
+                  {cat}
+                </label>
+              ))}
+            </div>
           </div>
         </div>
 

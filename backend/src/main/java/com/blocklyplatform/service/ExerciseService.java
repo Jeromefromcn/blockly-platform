@@ -146,6 +146,7 @@ public class ExerciseService {
         version.setBlocklyState(dto.getBlocklyState());
         version.setExpectedOutput(dto.getExpectedOutput());
         version.setGradingMode(dto.getGradingMode() != null ? dto.getGradingMode() : "OUTPUT_MATCH");
+        version.setAllowedBlocks(dto.getAllowedBlocks());
         version.setCreatedBy(dto.getCreatedBy());
         return versionRepo.save(version);
     }
@@ -171,6 +172,7 @@ public class ExerciseService {
         m.put("blocklyState", v.getBlocklyState());
         m.put("expectedOutput", v.getExpectedOutput());
         m.put("gradingMode", v.getGradingMode());
+        m.put("allowedBlocks", v.getAllowedBlocks());
         m.put("createdBy", v.getCreatedBy());
         m.put("createdAt", v.getCreatedAt());
         return m;

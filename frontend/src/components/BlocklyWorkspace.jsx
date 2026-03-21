@@ -65,15 +65,19 @@ const TOOLBOX = {
   ]
 };
 
-export default function BlocklyWorkspace({ onWorkspaceReady, initialState, readOnly = false }) {
+export default function BlocklyWorkspace({ onWorkspaceReady, initialState, readOnly = false, allowedCategories = null }) {
   const containerRef = useRef(null);
   const workspaceRef = useRef(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
 
+    const toolbox = allowedCategories && allowedCategories.length > 0
+      ? { ...TOOLBOX, contents: TOOLBOX.contents.filter(c => allowedCategories.includes(c.name)) }
+      : TOOLBOX;
+
     const workspace = Blockly.inject(containerRef.current, {
-      toolbox: readOnly ? null : TOOLBOX,
+      toolbox: readOnly ? null : toolbox,
       scrollbars: true,
       trashcan: !readOnly,
       readOnly,

@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS exercise_versions (
   blockly_state   TEXT NOT NULL,
   expected_output TEXT NOT NULL,
   grading_mode    VARCHAR(20) NOT NULL DEFAULT 'OUTPUT_MATCH',
+  allowed_blocks  TEXT DEFAULT NULL,
   created_by      VARCHAR(100) DEFAULT NULL,
   created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uq_exercise_version (exercise_id, version_number),

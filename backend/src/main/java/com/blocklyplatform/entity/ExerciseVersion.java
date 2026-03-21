@@ -32,6 +32,9 @@ public class ExerciseVersion {
     @Column(name = "grading_mode", nullable = false, length = 20)
     private String gradingMode = "OUTPUT_MATCH";
 
+    @Column(name = "allowed_blocks", columnDefinition = "TEXT")
+    private String allowedBlocks;
+
     @Column(name = "created_by")
     private String createdBy;
 

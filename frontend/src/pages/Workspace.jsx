@@ -137,7 +137,10 @@ export default function Workspace() {
           <button style={S.runBtn} onClick={handleRun}>Run</button>
         </div>
         <div style={{ flex: 1, minHeight: 0 }}>
-          <BlocklyWorkspace onWorkspaceReady={api => { wsRef.current = api; }} />
+          <BlocklyWorkspace
+            onWorkspaceReady={api => { wsRef.current = api; }}
+            allowedCategories={exercise?.version?.allowedBlocks ? JSON.parse(exercise.version.allowedBlocks) : null}
+          />
         </div>
         {runResult && (
           <div style={{ marginTop: 10 }}>

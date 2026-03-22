@@ -308,6 +308,13 @@ docker compose down && docker compose up -d
 
 ## 十二、更新日誌
 
+### 2026-03-22 — 重構：將 index.html 中的中文翻譯為英文
+
+**修改文件：**
+- `frontend/index.html` — 將 `lang="zh"` 改為 `lang="en"`；將頁面標題從 `Blockly 練習平台` 改為 `Blockly Exercise Platform`
+
+---
+
 ### 2026-03-22 — 新增測試案例文件
 
 新增完整的測試案例說明文件：

@@ -308,6 +308,13 @@ The `generatedCode` field is optional. When present, the submission is automatic
 
 ## 12. Changelog
 
+### 2026-03-22 — Refactor: Translate Chinese in index.html to English
+
+**Files changed:**
+- `frontend/index.html` — Changed `lang="zh"` to `lang="en"`; changed page title from `Blockly 練習平台` to `Blockly Exercise Platform`
+
+---
+
 ### 2026-03-22 — Test Case Documentation Added
 
 Added comprehensive test case documentation:

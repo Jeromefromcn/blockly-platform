@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,6 +36,15 @@ public class ExerciseService {
                 .stream().map(this::toMap).collect(Collectors.toList());
     }
 
+    public List<Map<String, Object>> listPublishedFiltered(String category, String difficulty) {
+        List<String> difficulties = null;
+        if (difficulty != null && !difficulty.isEmpty()) {
+            difficulties = Arrays.asList(difficulty.split(","));
+        }
+        return exerciseRepo.findPublishedFilteredByDifficulties(category, difficulties)
+                .stream().map(this::toMap).collect(Collectors.toList());
+    }
+
     public Map<String, Object> getWithVersion(Long id) {
         Exercise ex = exerciseRepo.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new RuntimeException("Exercise not found"));
@@ -53,9 +63,12 @@ public class ExerciseService {
 
     @Transactional
     public Map<String, Object> create(ExerciseCreateDto dto) {
+        validateExerciseInput(dto);
         Exercise ex = new Exercise();
         ex.setCode(dto.getCode());
         ex.setTitle(dto.getTitle());
+        ex.setCategory(dto.getCategory());
+        ex.setDifficulty(dto.getDifficulty() != null ? dto.getDifficulty() : "MEDIUM");
         exerciseRepo.save(ex);
 
         ExerciseVersion version = saveVersion(ex, dto);
@@ -69,9 +82,12 @@ public class ExerciseService {
 
     @Transactional
     public Map<String, Object> update(Long id, ExerciseCreateDto dto) {
+        validateExerciseInput(dto);
         Exercise ex = exerciseRepo.findByIdForUpdate(id)
                 .orElseThrow(() -> new RuntimeException("Exercise not found"));
         ex.setTitle(dto.getTitle());
+        ex.setCategory(dto.getCategory());
+        ex.setDifficulty(dto.getDifficulty() != null ? dto.getDifficulty() : "MEDIUM");
 
         ExerciseVersion version = saveVersion(ex, dto);
         ex.setCurrentVersionNumber(version.getVersionNumber());
@@ -151,6 +167,14 @@ public class ExerciseService {
         return versionRepo.save(version);
     }
 
+    private void validateExerciseInput(ExerciseCreateDto dto) {
+        if (dto.getDifficulty() != null && !dto.getDifficulty().isEmpty()) {
+            if (!Arrays.asList("EASY", "MEDIUM", "HARD").contains(dto.getDifficulty())) {
+                throw new RuntimeException("Invalid difficulty: must be EASY, MEDIUM, or HARD");
+            }
+        }
+    }
+
     private Map<String, Object> toMap(Exercise ex) {
         Map<String, Object> m = new HashMap<>();
         m.put("id", ex.getId());
@@ -159,6 +183,8 @@ public class ExerciseService {
         m.put("status", ex.getStatus());
         m.put("currentVersionNumber", ex.getCurrentVersionNumber());
         m.put("likeCount", ex.getLikeCount());
+        m.put("category", ex.getCategory());
+        m.put("difficulty", ex.getDifficulty());
         m.put("createdAt", ex.getCreatedAt());
         m.put("updatedAt", ex.getUpdatedAt());
         return m;

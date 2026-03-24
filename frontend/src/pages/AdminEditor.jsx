@@ -39,13 +39,21 @@ export default function AdminEditor() {
   const navigate = useNavigate();
   const isEdit = !!id;
 
-  const [form, setForm] = useState({ code: '', title: '', description: '', expectedOutput: '', createdBy: 'admin', gradingMode: 'OUTPUT_MATCH', allowedBlocks: null });
+  const [form, setForm] = useState({ code: '', title: '', description: '', expectedOutput: '', createdBy: 'admin', gradingMode: 'OUTPUT_MATCH', allowedBlocks: null, category: '', difficulty: 'MEDIUM' });
   const [selectedCategories, setSelectedCategories] = useState([...ALL_CATEGORIES]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
   const [initialBlocklyState, setInitialBlocklyState] = useState(null);
   const [runResult, setRunResult] = useState(null);
   const wsRef = useRef(null);
+
+  useEffect(() => {
+    apiGet('/api/exercises/categories')
+      .then(r => r.json())
+      .then(data => { setCategories(data); })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!isEdit) return;
@@ -61,6 +69,8 @@ export default function AdminEditor() {
           createdBy: data.version?.createdBy || 'admin',
           gradingMode: data.version?.gradingMode || 'OUTPUT_MATCH',
           allowedBlocks: rawAllowedBlocks,
+          category: data.category || '',
+          difficulty: data.difficulty || 'MEDIUM',
         });
         if (rawAllowedBlocks) {
           try { setSelectedCategories(JSON.parse(rawAllowedBlocks)); } catch { setSelectedCategories([...ALL_CATEGORIES]); }
@@ -146,6 +156,21 @@ export default function AdminEditor() {
             <label style={S.label}>Description (visible to students)</label>
             <textarea style={S.textarea} rows={6} value={form.description}
               onChange={set('description')} placeholder="Describe the exercise requirements..." />
+
+            <label style={S.label}>Category</label>
+            <select style={S.select} value={form.category} onChange={set('category')}>
+              <option value="">Select Category</option>
+              {categories.map(cat => (
+                <option key={cat.id} value={cat.name}>{cat.name}</option>
+              ))}
+            </select>
+
+            <label style={S.label}>Difficulty</label>
+            <select style={S.select} value={form.difficulty} onChange={set('difficulty')}>
+              <option value="EASY">Easy</option>
+              <option value="MEDIUM">Medium</option>
+              <option value="HARD">Hard</option>
+            </select>
 
             <label style={S.label}>Grading Mode</label>
             <select style={S.select} value={form.gradingMode} onChange={set('gradingMode')}>

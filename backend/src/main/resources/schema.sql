@@ -5,6 +5,8 @@ CREATE TABLE IF NOT EXISTS exercises (
   status                 VARCHAR(20) NOT NULL DEFAULT 'DRAFT',
   current_version_number INT NOT NULL DEFAULT 0,
   like_count             INT NOT NULL DEFAULT 0,
+  category               VARCHAR(50) DEFAULT NULL,
+  difficulty             VARCHAR(20) DEFAULT 'MEDIUM',
   deleted_at             DATETIME DEFAULT NULL,
   created_at             DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at             DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -74,3 +76,11 @@ CREATE TABLE IF NOT EXISTS role_permissions (
   permission  VARCHAR(50) NOT NULL,
   PRIMARY KEY (role, permission)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS categories (
+  id         BIGINT AUTO_INCREMENT PRIMARY KEY,
+  name       VARCHAR(100) NOT NULL UNIQUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT IGNORE INTO categories (name) VALUES ('Math'), ('Science'), ('Programming');

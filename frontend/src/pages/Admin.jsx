@@ -113,16 +113,18 @@ export default function Admin() {
       {tab === 'exercises' && (
         <table style={S.table}>
           <thead>
-            <tr>{['ID', 'Code', 'Title', 'Status', 'Version', 'Likes', 'Actions'].map(h => <th key={h} style={S.th}>{h}</th>)}</tr>
+            <tr>{['ID', 'Code', 'Title', 'Category', 'Difficulty', 'Status', 'Version', 'Likes', 'Actions'].map(h => <th key={h} style={S.th}>{h}</th>)}</tr>
           </thead>
           <tbody>
             {exercises.length === 0
-              ? <tr><td colSpan={7} style={{ ...S.td, textAlign: 'center', color: '#a0aec0' }}>No exercises</td></tr>
+              ? <tr><td colSpan={9} style={{ ...S.td, textAlign: 'center', color: '#a0aec0' }}>No exercises</td></tr>
               : exercises.map(ex => (
                 <tr key={ex.id}>
                   <td style={S.td}>{ex.id}</td>
                   <td style={{ ...S.td, fontFamily: 'monospace', fontSize: '0.82rem' }}>{ex.code}</td>
                   <td style={S.td}>{ex.title}</td>
+                  <td style={S.td}>{ex.category || '—'}</td>
+                  <td style={S.td}><span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 12, fontSize: '0.75rem', fontWeight: 600, backgroundColor: ex.difficulty === 'EASY' ? '#c6f6d5' : ex.difficulty === 'MEDIUM' ? '#feebc8' : '#fed7d7', color: ex.difficulty === 'EASY' ? '#276749' : ex.difficulty === 'MEDIUM' ? '#744210' : '#c53030' }}>{ex.difficulty || 'MEDIUM'}</span></td>
                   <td style={S.td}><span style={badge(ex.status)}>{ex.status}</span></td>
                   <td style={S.td}>v{ex.currentVersionNumber}</td>
                   <td style={S.td}>❤️ {ex.likeCount}</td>

@@ -37,6 +37,12 @@ public class Exercise {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @Column(nullable = true, length = 50)
+    private String category;
+
+    @Column(nullable = false, length = 20)
+    private String difficulty = "MEDIUM";
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

@@ -18,4 +18,6 @@ public class ExerciseCreateDto {
     private String gradingMode = "OUTPUT_MATCH";
     private String allowedBlocks;
     private String createdBy;
+    private String category;
+    private String difficulty = "MEDIUM";
 }

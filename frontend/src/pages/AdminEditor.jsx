@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import BlocklyWorkspace from '../components/BlocklyWorkspace.jsx';
+import { apiGet, apiPost, apiPut } from '../api.js';
 
 const ALL_CATEGORIES = ['Logic', 'Loops', 'Math', 'Text', 'Variables', 'Functions', 'Lists'];
 
@@ -48,7 +49,7 @@ export default function AdminEditor() {
 
   useEffect(() => {
     if (!isEdit) return;
-    fetch(`/api/exercises/${id}`)
+    apiGet(`/api/exercises/${id}`)
       .then(r => r.json())
       .then(data => {
         const rawAllowedBlocks = data.version?.allowedBlocks || null;
@@ -89,13 +90,9 @@ export default function AdminEditor() {
 
     setSaving(true);
     try {
-      const url = isEdit ? `/api/exercises/${id}` : '/api/exercises';
-      const method = isEdit ? 'PUT' : 'POST';
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, blocklyState, allowedBlocks }),
-      });
+      const res = isEdit
+        ? await apiPut(`/api/exercises/${id}`, { ...form, blocklyState, allowedBlocks })
+        : await apiPost('/api/exercises', { ...form, blocklyState, allowedBlocks });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Save failed');
       alert('Saved successfully!');

@@ -262,6 +262,35 @@ Monitoring:
 
 ## 11. API Reference
 
+### Authentication
+
+| Method | Path | Auth Required | Description |
+|--------|------|---------------|-------------|
+| POST | /api/auth/login | No | Login; sets httpOnly cookie `auth_token` |
+| POST | /api/auth/logout | No | Logout; clears cookie |
+| GET | /api/auth/me | Yes | Get current user info + permissions |
+
+### User Profile
+
+| Method | Path | Auth Required | Description |
+|--------|------|---------------|-------------|
+| GET | /api/profile | Yes | Get own profile |
+| PUT | /api/profile | Yes | Update own display name and email |
+| PUT | /api/profile/password | Yes (non-super-admin) | Change own password |
+
+### User Management (Super Admin only)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | /api/admin/users | List all users |
+| POST | /api/admin/users | Create a user |
+| DELETE | /api/admin/users/{id} | Delete a user |
+| POST | /api/admin/users/{id}/reset-password | Reset password to 12345678 |
+| POST | /api/admin/users/{id}/force-logout | Increment token_version to invalidate sessions |
+| POST | /api/admin/users/import-csv | Batch import users from CSV (columns: username,password,role) |
+| GET | /api/admin/permissions/{role} | Get permissions for a role |
+| PUT | /api/admin/permissions/{role} | Set permissions for a role |
+
 ### Exercise Management
 
 | Method | Path | Description |
@@ -306,7 +335,74 @@ The `generatedCode` field is optional. When present, the submission is automatic
 
 ---
 
-## 12. Changelog
+## 12. Authentication & Roles
+
+### Roles
+
+| Role | Description |
+|------|-------------|
+| SUPER_ADMIN | Platform administrator. Credentials in `application.yml` (env override: `SUPER_ADMIN_USERNAME`, `SUPER_ADMIN_PASSWORD`). Not stored in DB. Always has all permissions. |
+| TUTOR | Teacher/grader. Stored in DB. Created by super admin. Permissions configurable. |
+| STUDENT | Learner. Stored in DB. Created by super admin. Permissions configurable. |
+
+### Permissions
+
+| Permission | Description |
+|-----------|-------------|
+| VIEW_EXERCISES | View published exercises |
+| SUBMIT_EXERCISES | Submit answers |
+| GRADE_SUBMISSIONS | Grade student submissions |
+| MANAGE_EXERCISES | Create/edit/delete exercises (Admin Panel access) |
+| MANAGE_USERS | Unused by routes; reserved for future use |
+
+### JWT Cookie
+
+- Cookie name: `auth_token`
+- Type: httpOnly, path `/`
+- Expiry: 8 hours
+- Claims: `sub` (username), `role`, `tokenVersion`, `exp`
+
+### Default Password
+
+New users and users whose password has been reset by super admin receive the default password: **12345678**
+
+### Application Configuration
+
+```yaml
+super-admin:
+  username: ${SUPER_ADMIN_USERNAME:admin}       # default: admin
+  password: ${SUPER_ADMIN_PASSWORD:admin123}    # default: admin123
+
+jwt:
+  secret: ${JWT_SECRET:blockly-platform-jwt-secret-key-2026-very-long}
+  expiry-hours: 8
+```
+
+### Live Database Migration (new tables)
+
+```sql
+CREATE TABLE IF NOT EXISTS users (
+  id             BIGINT AUTO_INCREMENT PRIMARY KEY,
+  username       VARCHAR(100) NOT NULL UNIQUE,
+  password_hash  VARCHAR(255) NOT NULL,
+  role           VARCHAR(20) NOT NULL,
+  display_name   VARCHAR(100),
+  email          VARCHAR(100),
+  enabled        BOOLEAN NOT NULL DEFAULT TRUE,
+  token_version  INT NOT NULL DEFAULT 0,
+  created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS role_permissions (
+  role        VARCHAR(20) NOT NULL,
+  permission  VARCHAR(50) NOT NULL,
+  PRIMARY KEY (role, permission)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+```
+
+---
+
+## 13. Changelog
 
 ### 2026-03-22 — Refactor: Translate Chinese in index.html to English
 

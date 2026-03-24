@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { apiGet, apiPost } from '../api.js';
 
 const S = {
   container: { maxWidth: 800, margin: '40px auto', padding: '0 20px' },
@@ -43,7 +44,7 @@ export default function Home() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetch('/api/exercises/published')
+    apiGet('/api/exercises/published')
       .then(r => r.json())
       .then(data => { setExercises(data); setLoading(false); })
       .catch(() => setLoading(false));
@@ -53,7 +54,7 @@ export default function Home() {
     e.stopPropagation();
     try {
       const clientId = getClientId();
-      const res = await fetch(`/api/exercises/${exId}/like?clientId=${encodeURIComponent(clientId)}`, { method: 'POST' });
+      const res = await apiPost(`/api/exercises/${exId}/like?clientId=${encodeURIComponent(clientId)}`);
       const data = await res.json();
       setExercises(prev => prev.map(ex => ex.id === exId ? { ...ex, likeCount: data.likeCount } : ex));
       const newLiked = { ...liked, [exId]: data.liked };

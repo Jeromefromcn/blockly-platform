@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import BlocklyWorkspace from '../components/BlocklyWorkspace.jsx';
+import { apiGet } from '../api.js';
 
 const S = {
   layout: { display: 'flex', height: 'calc(100vh - 50px)' },
@@ -42,7 +43,7 @@ export default function Workspace() {
   const wsRef = useRef(null);
 
   useEffect(() => {
-    fetch(`/api/exercises/${id}`)
+    apiGet(`/api/exercises/${id}`)
       .then(r => r.json())
       .then(data => { setExercise(data); setLoading(false); })
       .catch(() => setLoading(false));

@@ -33,3 +33,11 @@ management:
 logging:
   level:
     com.blocklyplatform: INFO
+
+super-admin:
+  username: ${SUPER_ADMIN_USERNAME:admin}
+  password: ${SUPER_ADMIN_PASSWORD:admin123}
+
+jwt:
+  secret: ${JWT_SECRET:blockly-platform-jwt-secret-key-2026-very-long}
+  expiry-hours: 8

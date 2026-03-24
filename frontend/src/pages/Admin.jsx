@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { apiDelete, apiGet, apiPatch, apiPost } from '../api.js';
 
 const S = {
   container: { maxWidth: 1100, margin: '32px auto', padding: '0 20px' },
@@ -40,21 +41,21 @@ export default function Admin() {
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
 
-  const loadExercises = () => fetch('/api/exercises').then(r => r.json()).then(setExercises);
-  const loadSubmissions = () => fetch('/api/submissions').then(r => r.json()).then(setSubmissions);
+  const loadExercises = () => apiGet('/api/exercises').then(r => r.json()).then(setExercises);
+  const loadSubmissions = () => apiGet('/api/submissions').then(r => r.json()).then(setSubmissions);
 
   useEffect(() => {
     Promise.all([loadExercises(), loadSubmissions()]).finally(() => setLoading(false));
   }, []);
 
   const toggleStatus = async (ex) => {
-    await fetch(`/api/exercises/${ex.id}/${ex.status === 'PUBLISHED' ? 'unpublish' : 'publish'}`, { method: 'POST' });
+    await apiPost(`/api/exercises/${ex.id}/${ex.status === 'PUBLISHED' ? 'unpublish' : 'publish'}`);
     loadExercises();
   };
 
   const deleteExercise = async (id) => {
     if (!confirm('Delete this exercise?')) return;
-    await fetch(`/api/exercises/${id}`, { method: 'DELETE' });
+    await apiDelete(`/api/exercises/${id}`);
     loadExercises();
   };
 
@@ -64,7 +65,7 @@ export default function Admin() {
     const formData = new FormData();
     for (const f of files) formData.append('files', f);
     try {
-      const res = await fetch('/api/submissions/import', { method: 'POST', body: formData });
+      const res = await fetch('/api/submissions/import', { method: 'POST', body: formData, credentials: 'include' });
       const data = await res.json();
       setImportResults(data);
       loadSubmissions();
@@ -82,11 +83,9 @@ export default function Admin() {
   const submitGrade = async () => {
     const score = parseInt(gradeForm.score);
     if (isNaN(score) || score < 0 || score > 100) { alert('Score must be 0–100'); return; }
-    await fetch(`/api/submissions/${grading.submissionId}/grade`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tutorScore: score, tutorComment: gradeForm.comment }),
-    });
+    await apiPatch(`/api/submissions/${grading.submissionId}/grade`,
+      { tutorScore: score, tutorComment: gradeForm.comment }
+    );
     setGrading(null);
     loadSubmissions();
   };

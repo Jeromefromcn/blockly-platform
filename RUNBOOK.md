@@ -260,7 +260,103 @@ docker compose down && docker compose up -d
 
 ---
 
-## 十一、API 接口列表
+## 十一、身份驗證與角色
+
+### 角色說明
+
+| 角色 | 說明 |
+|------|------|
+| SUPER_ADMIN | 超級管理員。憑證在 `application.yml` 配置（環境變量覆蓋：`SUPER_ADMIN_USERNAME`、`SUPER_ADMIN_PASSWORD`）。不存儲於數據庫。始終擁有全部權限。 |
+| TUTOR | 教師/評分者。存儲於數據庫，由超級管理員創建。權限可配置。 |
+| STUDENT | 學生。存儲於數據庫，由超級管理員創建。權限可配置。 |
+
+### 權限列表
+
+| 權限 | 說明 |
+|------|------|
+| VIEW_EXERCISES | 查看已發布題目 |
+| SUBMIT_EXERCISES | 提交答案 |
+| GRADE_SUBMISSIONS | 評閱提交 |
+| MANAGE_EXERCISES | 創建/編輯/刪除題目（管理後台訪問） |
+| MANAGE_USERS | 保留，暫未使用 |
+
+### JWT Cookie
+
+- Cookie 名稱：`auth_token`
+- 類型：httpOnly，路徑 `/`
+- 有效期：8 小時
+- 包含字段：`sub`（用戶名）、`role`、`tokenVersion`、`exp`
+
+### 默認密碼
+
+新用戶及被超級管理員重置密碼的用戶，默認密碼為：**12345678**
+
+### 應用配置
+
+```yaml
+super-admin:
+  username: ${SUPER_ADMIN_USERNAME:admin}       # 默認：admin
+  password: ${SUPER_ADMIN_PASSWORD:admin123}    # 默認：admin123
+
+jwt:
+  secret: ${JWT_SECRET:blockly-platform-jwt-secret-key-2026-very-long}
+  expiry-hours: 8
+```
+
+### 數據庫在線遷移（新增兩張表）
+
+```sql
+CREATE TABLE IF NOT EXISTS users (
+  id             BIGINT AUTO_INCREMENT PRIMARY KEY,
+  username       VARCHAR(100) NOT NULL UNIQUE,
+  password_hash  VARCHAR(255) NOT NULL,
+  role           VARCHAR(20) NOT NULL,
+  display_name   VARCHAR(100),
+  email          VARCHAR(100),
+  enabled        BOOLEAN NOT NULL DEFAULT TRUE,
+  token_version  INT NOT NULL DEFAULT 0,
+  created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS role_permissions (
+  role        VARCHAR(20) NOT NULL,
+  permission  VARCHAR(50) NOT NULL,
+  PRIMARY KEY (role, permission)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+```
+
+---
+
+## 十二、API 接口列表
+
+### 身份驗證
+
+| 方法 | 路徑 | 說明 |
+|------|------|------|
+| POST | /api/auth/login | 登錄，設置 httpOnly Cookie `auth_token` |
+| POST | /api/auth/logout | 登出，清除 Cookie |
+| GET | /api/auth/me | 獲取當前用戶信息及權限列表 |
+
+### 個人資料
+
+| 方法 | 路徑 | 說明 |
+|------|------|------|
+| GET | /api/profile | 獲取自己的資料 |
+| PUT | /api/profile | 更新自己的顯示名稱和郵箱 |
+| PUT | /api/profile/password | 修改自己的密碼（超級管理員不可用） |
+
+### 用戶管理（僅超級管理員）
+
+| 方法 | 路徑 | 說明 |
+|------|------|------|
+| GET | /api/admin/users | 列出所有用戶 |
+| POST | /api/admin/users | 創建用戶 |
+| DELETE | /api/admin/users/{id} | 刪除用戶 |
+| POST | /api/admin/users/{id}/reset-password | 重置密碼為 12345678 |
+| POST | /api/admin/users/{id}/force-logout | 強制登出（遞增 token_version） |
+| POST | /api/admin/users/import-csv | 批量導入用戶（CSV：username,password,role） |
+| GET | /api/admin/permissions/{role} | 獲取角色的權限列表 |
+| PUT | /api/admin/permissions/{role} | 設置角色的權限列表 |
 
 ### 題目管理
 
@@ -306,7 +402,7 @@ docker compose down && docker compose up -d
 
 ---
 
-## 十二、更新日誌
+## 十三、更新日誌
 
 ### 2026-03-22 — 重構：將 index.html 中的中文翻譯為英文
 

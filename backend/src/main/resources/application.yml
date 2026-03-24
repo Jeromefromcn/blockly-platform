@@ -9,10 +9,6 @@ spring:
       ddl-auto: none
     show-sql: false
     database-platform: org.hibernate.dialect.MySQLDialect
-  sql:
-    init:
-      mode: always
-      schema-locations: classpath:schema.sql
 
 server:
   port: 8081

@@ -4,11 +4,11 @@
 
 | Metric | Value |
 |---|---|
-| Test files | 2 |
-| Total test cases | 12 |
-| Services covered | 2 (`AutoGradingService`, `ExerciseService`) |
+| Test files | 5 |
+| Total test cases | 45 |
+| Services covered | 5 (`AutoGradingService`, `ExerciseService`, `JwtService`, `AuthService`, `UserService`) |
 | Test framework | JUnit 5 + Mockito |
-| Last known run result | Not yet recorded (run `mvn test` to get current results) |
+| Last known run result | 45 passed, 0 failed, 0 errors (2026-03-24) |
 
 ---
 
@@ -75,6 +75,74 @@ A fresh `AutoGradingService` instance is created before each test via `@BeforeEa
 ### Setup
 
 Before each test, an `Exercise` entity is pre-populated (`id=1`, `code="TEST-001"`, `title="Test Exercise"`, `status="DRAFT"`, `currentVersionNumber=1`, `likeCount=0`). All repositories are Mockito mocks injected via `@InjectMocks`.
+
+---
+
+---
+
+## Test Class: `JwtServiceTest`
+
+**File:** `backend/src/test/java/com/blocklyplatform/service/JwtServiceTest.java`
+
+**Purpose:** Tests `JwtService` directly (no Spring context). A real `JwtService` instance is constructed with a test secret and expiry, so the full JJWT library is exercised without mocking.
+
+| # | Test Method | What It Tests | Expected Result |
+|---|---|---|---|
+| 1 | `generateToken_returnsNonNullToken` | `generateToken()` for a normal user | Returns a non-null, non-blank JWT string |
+| 2 | `validateToken_validToken_returnsClaims` | `validateToken()` on a freshly generated token | Returns `Claims` object with the correct `subject` |
+| 3 | `validateToken_expiredToken_throwsExpiredJwtException` | `validateToken()` on a token generated with 0-hour expiry | Throws `ExpiredJwtException` |
+| 4 | `validateToken_tamperedToken_throwsSignatureException` | `validateToken()` after last character of token is flipped | Throws a JWT signature-related exception |
+| 5 | `extractUsername_returnsCorrectUsername` | `extractUsername()` on a token for user "bob" | Returns `"bob"` |
+| 6 | `extractTokenVersion_returnsCorrectVersion` | `extractTokenVersion()` on a token generated with version 5 | Returns `5` |
+| 7 | `generateToken_tokenContainsCorrectRoleClaim` | `role` claim in a SUPER_ADMIN token | `claims.get("role")` equals `"SUPER_ADMIN"` |
+
+---
+
+## Test Class: `AuthServiceTest`
+
+**File:** `backend/src/test/java/com/blocklyplatform/service/AuthServiceTest.java`
+
+**Purpose:** Tests `AuthService` business logic using Mockito mocks for `UserRepository`, `JwtService`, and `PasswordEncoder`. The `@Value`-injected super-admin credentials are set via `ReflectionTestUtils`.
+
+| # | Test Method | What It Tests | Expected Result |
+|---|---|---|---|
+| 1 | `login_validSuperAdminCredentials_returnsToken` | Login with configured super admin username + password | Returns the JWT from `jwtService`; `userRepository` is never called |
+| 2 | `login_wrongSuperAdminPassword_throwsException` | Login with super admin username but wrong password | Throws `RuntimeException("Invalid credentials")` |
+| 3 | `login_validTutorUser_returnsToken` | Login with a TUTOR user whose password matches | Returns the JWT; `passwordEncoder.matches()` is called |
+| 4 | `login_validStudentUser_returnsToken` | Login with a STUDENT user whose password matches | Returns the JWT for STUDENT role |
+| 5 | `login_wrongDbUserPassword_throwsException` | Login with a valid username but wrong password | Throws `RuntimeException("Invalid credentials")` |
+| 6 | `login_nonExistentUsername_throwsException` | Login with a username not in the DB | Throws `RuntimeException("Invalid credentials")` |
+| 7 | `login_disabledUser_throwsException` | Login with a DB user whose `enabled` flag is false | Throws `RuntimeException("Account is disabled")` |
+| 8 | `isSuperAdmin_configuredUsername_returnsTrue` | `isSuperAdmin()` with exact and differently-cased super admin username | Returns `true` for all case variants |
+| 9 | `isSuperAdmin_regularUsername_returnsFalse` | `isSuperAdmin()` with a regular username, tutor1, student1, empty string | Returns `false` for all |
+
+---
+
+## Test Class: `UserServiceTest`
+
+**File:** `backend/src/test/java/com/blocklyplatform/service/UserServiceTest.java`
+
+**Purpose:** Tests `UserService` business logic using Mockito mocks for `UserRepository`, `RolePermissionRepository`, and `PasswordEncoder`. No Spring context or database is involved.
+
+| # | Test Method | What It Tests | Expected Result |
+|---|---|---|---|
+| 1 | `createUser_newUser_savesWithHashedPassword` | `createUser()` with a new unique username and explicit password | `userRepository.save()` called with the BCrypt-encoded password |
+| 2 | `createUser_duplicateUsername_throwsException` | `createUser()` with an existing username | Throws `RuntimeException` containing "Username already exists" |
+| 3 | `createUser_invalidRole_throwsException` | `createUser()` with role "ADMIN" (not TUTOR/STUDENT) | Throws `RuntimeException` containing "Invalid role" |
+| 4 | `createUser_nullPassword_usesDefaultPassword` | `createUser()` with `null` password | `passwordEncoder.encode("12345678")` is called |
+| 5 | `resetPassword_setsDefaultPasswordAndIncrementsTokenVersion` | `resetPassword()` on an existing user | Password set to `encode("12345678")`; `tokenVersion` incremented by 1 |
+| 6 | `forceLogout_incrementsTokenVersion` | `forceLogout()` on a user with `tokenVersion=3` | Saved user has `tokenVersion=4` |
+| 7 | `deleteUser_existingUser_callsRepositoryDelete` | `deleteUser()` on an existing user | `userRepository.deleteById(1L)` is called |
+| 8 | `deleteUser_nonExistentUser_throwsException` | `deleteUser()` when user does not exist | Throws `RuntimeException("User not found")` |
+| 9 | `getPermissions_tutorRole_returnsPermissionsFromRepository` | `getPermissions("TUTOR")` when repository returns 2 entries | Returns list containing `VIEW_EXERCISES` and `GRADE_SUBMISSIONS` |
+| 10 | `getPermissions_superAdminRole_returnsAllPermissions` | `getPermissions("SUPER_ADMIN")` | Returns all 5 permissions; `rolePermissionRepository` never called |
+| 11 | `setPermissions_tutorRole_deletesOldAndSavesNew` | `setPermissions("TUTOR", ["VIEW_EXERCISES","GRADE_SUBMISSIONS"])` | `deleteByRole("TUTOR")` called once; 2 `save()` calls with correct permissions |
+| 12 | `setPermissions_superAdminRole_throwsException` | `setPermissions("SUPER_ADMIN", ...)` | Throws `RuntimeException` containing "TUTOR or STUDENT" |
+| 13 | `importCsv_validCsv_createsMultipleUsers` | CSV with 2 valid rows (alice/TUTOR, bob/STUDENT) | Returns 2 result entries, both with `status=created` |
+| 14 | `importCsv_duplicateUsername_recordsFailedStatus` | CSV with a username that already exists in the repository | Returns 1 entry with `status=failed` and a non-null `error` |
+| 15 | `updateProfile_validId_updatesDisplayNameAndEmail` | `updateProfile()` for an existing user | Saved user has the new `displayName` and `email` values |
+| 16 | `changePassword_correctOldPassword_updatesHash` | `changePassword()` when old password matches | Password updated to new hash; `tokenVersion` incremented |
+| 17 | `changePassword_wrongOldPassword_throwsException` | `changePassword()` when old password does not match | Throws `RuntimeException("Current password is incorrect")`; `save()` never called |
 
 ---
 

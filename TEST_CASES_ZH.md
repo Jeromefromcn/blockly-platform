@@ -4,11 +4,11 @@
 
 | 指標 | 數值 |
 |---|---|
-| 測試檔案數量 | 2 |
-| 測試案例總數 | 12 |
-| 已覆蓋的服務 | 2 個（`AutoGradingService`、`ExerciseService`） |
+| 測試檔案數量 | 5 |
+| 測試案例總數 | 45 |
+| 已覆蓋的服務 | 5 個（`AutoGradingService`、`ExerciseService`、`JwtService`、`AuthService`、`UserService`） |
 | 測試框架 | JUnit 5 + Mockito |
-| 最後執行結果 | 尚未記錄（請執行 `mvn test` 取得最新結果） |
+| 最後執行結果 | 45 通過，0 失敗，0 錯誤（2026-03-24） |
 
 ---
 
@@ -75,6 +75,74 @@ mvn test -Dsurefire.useFile=false
 ### 測試初始化
 
 每個測試前，`@BeforeEach` 會預先建立一個 `Exercise` 實體（`id=1`、`code="TEST-001"`、`title="Test Exercise"`、`status="DRAFT"`、`currentVersionNumber=1`、`likeCount=0`），三個 Repository 皆為 Mockito Mock，透過 `@InjectMocks` 注入 `ExerciseService`。
+
+---
+
+---
+
+## 測試類別：`JwtServiceTest`
+
+**檔案：** `backend/src/test/java/com/blocklyplatform/service/JwtServiceTest.java`
+
+**目的：** 直接測試 `JwtService`（不載入 Spring Context）。以測試用 secret 與 expiry 直接建立 `JwtService` 實例，讓 JJWT 函式庫完整執行，無需 Mock。
+
+| # | 測試方法名稱 | 測試內容 | 預期結果 |
+|---|---|---|---|
+| 1 | `generateToken_returnsNonNullToken` | 對一般使用者呼叫 `generateToken()` | 回傳非 null、非空白的 JWT 字串 |
+| 2 | `validateToken_validToken_returnsClaims` | 對剛產生的 token 呼叫 `validateToken()` | 回傳包含正確 `subject` 的 `Claims` 物件 |
+| 3 | `validateToken_expiredToken_throwsExpiredJwtException` | 對 expiry 為 0 小時的 token 呼叫 `validateToken()` | 拋出 `ExpiredJwtException` |
+| 4 | `validateToken_tamperedToken_throwsSignatureException` | 翻轉 token 最後一個字元後再呼叫 `validateToken()` | 拋出 JWT 簽章相關例外 |
+| 5 | `extractUsername_returnsCorrectUsername` | 對 "bob" 的 token 呼叫 `extractUsername()` | 回傳 `"bob"` |
+| 6 | `extractTokenVersion_returnsCorrectVersion` | 對版本號為 5 的 token 呼叫 `extractTokenVersion()` | 回傳 `5` |
+| 7 | `generateToken_tokenContainsCorrectRoleClaim` | 驗證 SUPER_ADMIN token 中的 `role` claim | `claims.get("role")` 等於 `"SUPER_ADMIN"` |
+
+---
+
+## 測試類別：`AuthServiceTest`
+
+**檔案：** `backend/src/test/java/com/blocklyplatform/service/AuthServiceTest.java`
+
+**目的：** 以 Mockito Mock `UserRepository`、`JwtService`、`PasswordEncoder`，測試 `AuthService` 業務邏輯。超級管理員設定值透過 `ReflectionTestUtils` 注入。
+
+| # | 測試方法名稱 | 測試內容 | 預期結果 |
+|---|---|---|---|
+| 1 | `login_validSuperAdminCredentials_returnsToken` | 使用正確的超級管理員帳密登入 | 回傳 JWT；`userRepository` 從未被呼叫 |
+| 2 | `login_wrongSuperAdminPassword_throwsException` | 使用超級管理員帳號但密碼錯誤登入 | 拋出 `RuntimeException("Invalid credentials")` |
+| 3 | `login_validTutorUser_returnsToken` | 使用 DB 中 TUTOR 使用者登入，密碼正確 | 回傳 JWT；`passwordEncoder.matches()` 被呼叫 |
+| 4 | `login_validStudentUser_returnsToken` | 使用 DB 中 STUDENT 使用者登入，密碼正確 | 回傳 STUDENT 角色的 JWT |
+| 5 | `login_wrongDbUserPassword_throwsException` | 帳號存在但密碼錯誤 | 拋出 `RuntimeException("Invalid credentials")` |
+| 6 | `login_nonExistentUsername_throwsException` | 使用 DB 中不存在的帳號登入 | 拋出 `RuntimeException("Invalid credentials")` |
+| 7 | `login_disabledUser_throwsException` | 使用 `enabled=false` 的 DB 使用者登入 | 拋出 `RuntimeException("Account is disabled")` |
+| 8 | `isSuperAdmin_configuredUsername_returnsTrue` | 傳入完全一致或大小寫不同的超級管理員帳號 | 所有形式均回傳 `true` |
+| 9 | `isSuperAdmin_regularUsername_returnsFalse` | 傳入一般帳號 tutor1、student1、空字串 | 所有情況均回傳 `false` |
+
+---
+
+## 測試類別：`UserServiceTest`
+
+**檔案：** `backend/src/test/java/com/blocklyplatform/service/UserServiceTest.java`
+
+**目的：** 以 Mockito Mock `UserRepository`、`RolePermissionRepository`、`PasswordEncoder`，測試 `UserService` 業務邏輯。不啟動 Spring Context，不觸及資料庫。
+
+| # | 測試方法名稱 | 測試內容 | 預期結果 |
+|---|---|---|---|
+| 1 | `createUser_newUser_savesWithHashedPassword` | 以新唯一帳號與明文密碼呼叫 `createUser()` | `userRepository.save()` 被呼叫，且密碼為 BCrypt 雜湊值 |
+| 2 | `createUser_duplicateUsername_throwsException` | 帳號已存在時呼叫 `createUser()` | 拋出含 "Username already exists" 的 `RuntimeException` |
+| 3 | `createUser_invalidRole_throwsException` | 角色為 "ADMIN"（非 TUTOR/STUDENT）時呼叫 `createUser()` | 拋出含 "Invalid role" 的 `RuntimeException` |
+| 4 | `createUser_nullPassword_usesDefaultPassword` | 密碼為 `null` 時呼叫 `createUser()` | `passwordEncoder.encode("12345678")` 被呼叫 |
+| 5 | `resetPassword_setsDefaultPasswordAndIncrementsTokenVersion` | 對既有使用者呼叫 `resetPassword()` | 密碼設為 `encode("12345678")`；`tokenVersion` 遞增 1 |
+| 6 | `forceLogout_incrementsTokenVersion` | 對 `tokenVersion=3` 的使用者呼叫 `forceLogout()` | 儲存後使用者的 `tokenVersion` 為 4 |
+| 7 | `deleteUser_existingUser_callsRepositoryDelete` | 對既有使用者呼叫 `deleteUser()` | `userRepository.deleteById(1L)` 被呼叫 |
+| 8 | `deleteUser_nonExistentUser_throwsException` | 使用者不存在時呼叫 `deleteUser()` | 拋出 `RuntimeException("User not found")` |
+| 9 | `getPermissions_tutorRole_returnsPermissionsFromRepository` | `getPermissions("TUTOR")` 且 repository 回傳 2 筆 | 回傳含 `VIEW_EXERCISES` 與 `GRADE_SUBMISSIONS` 的清單 |
+| 10 | `getPermissions_superAdminRole_returnsAllPermissions` | `getPermissions("SUPER_ADMIN")` | 回傳全部 5 項權限；`rolePermissionRepository` 從未被呼叫 |
+| 11 | `setPermissions_tutorRole_deletesOldAndSavesNew` | `setPermissions("TUTOR", ["VIEW_EXERCISES","GRADE_SUBMISSIONS"])` | `deleteByRole("TUTOR")` 呼叫一次；2 次 `save()` 儲存正確權限 |
+| 12 | `setPermissions_superAdminRole_throwsException` | `setPermissions("SUPER_ADMIN", ...)` | 拋出含 "TUTOR or STUDENT" 的 `RuntimeException` |
+| 13 | `importCsv_validCsv_createsMultipleUsers` | CSV 含 2 筆有效資料（alice/TUTOR、bob/STUDENT） | 回傳 2 筆結果，均為 `status=created` |
+| 14 | `importCsv_duplicateUsername_recordsFailedStatus` | CSV 中帳號已存在於 repository | 回傳 1 筆結果，`status=failed`，且 `error` 非 null |
+| 15 | `updateProfile_validId_updatesDisplayNameAndEmail` | 對既有使用者呼叫 `updateProfile()` | 儲存後使用者的 `displayName` 與 `email` 更新為新值 |
+| 16 | `changePassword_correctOldPassword_updatesHash` | 舊密碼正確時呼叫 `changePassword()` | 密碼更新為新雜湊值；`tokenVersion` 遞增 |
+| 17 | `changePassword_wrongOldPassword_throwsException` | 舊密碼不正確時呼叫 `changePassword()` | 拋出 `RuntimeException("Current password is incorrect")`；`save()` 從未被呼叫 |
 
 ---
 

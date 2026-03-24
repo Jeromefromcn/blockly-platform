@@ -36,6 +36,7 @@ public class SecurityConfig {
                 // Public routes
                 .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/auth/logout").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/exercises/categories").permitAll()
                 // Actuator endpoints public
                 .requestMatchers("/actuator/**").permitAll()
                 // Static frontend (served by Nginx in production; backend may serve fallback)

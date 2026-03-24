@@ -4,7 +4,6 @@
 
 | # | Feature | Description | Date Added |
 |---|---------|-------------|------------|
-| 1 | Authentication & Access Control | Add basic auth for admin panel; students identified by login instead of raw clientId | 2026-03-24 |
 | 2 | Student Direct Submission | Add a Submit button in the Workspace page so students can submit directly without teacher batch import | 2026-03-24 |
 | 3 | Exercise Organization | Add categories, difficulty levels (easy / medium / hard), and ordering control for exercises | 2026-03-24 |
 | 4 | Student Progress Dashboard | Let students see which exercises they completed, their scores, and overall progress | 2026-03-24 |
@@ -21,4 +20,4 @@
 
 | # | Feature | Description | Date Added | Date Done |
 |---|---------|-------------|------------|-----------|
-| — | — | — | — | — |
+| 1 | Authentication & Access Control | JWT auth (httpOnly cookie), 3 roles (Super Admin / Tutor / Student), role permissions, user management, CSV import, profile page | 2026-03-24 | 2026-03-24 |

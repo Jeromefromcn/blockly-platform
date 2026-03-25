@@ -67,15 +67,21 @@ const TOOLBOX = {
 
 // Build a filtered toolbox that only includes allowed block types.
 // Categories with no remaining blocks are removed entirely.
-// Special categories (custom: 'VARIABLE', custom: 'PROCEDURE') are always included
-// unless the caller explicitly excludes them via allowedBlocks.
+// Special categories (Variables, Functions) are only included if the admin selected their blocks.
 function buildFilteredToolbox(allowedBlocks) {
   if (!allowedBlocks || allowedBlocks.length === 0) return TOOLBOX;
 
+  const VARIABLE_BLOCKS = ['variables_get', 'variables_set'];
+  const PROCEDURE_BLOCKS = ['procedures_defnoreturn', 'procedures_defreturn', 'procedures_callnoreturn', 'procedures_callreturn'];
+
   const filteredContents = TOOLBOX.contents
     .map(category => {
-      // Custom categories (Variables, Functions) have no contents array — include them always
-      if (category.custom) return category;
+      if (category.custom === 'VARIABLE') {
+        return VARIABLE_BLOCKS.some(t => allowedBlocks.includes(t)) ? category : null;
+      }
+      if (category.custom === 'PROCEDURE') {
+        return PROCEDURE_BLOCKS.some(t => allowedBlocks.includes(t)) ? category : null;
+      }
       const filteredItems = (category.contents || []).filter(item => allowedBlocks.includes(item.type));
       if (filteredItems.length === 0) return null;
       return { ...category, contents: filteredItems };

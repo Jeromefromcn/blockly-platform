@@ -142,7 +142,10 @@ public class ExerciseService {
         Exercise ex = exerciseRepo.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new RuntimeException("Exercise not found"));
         if (likeRepo.findByExerciseIdAndClientId(id, clientId).isPresent()) {
-            return Map.of("exerciseId", id, "likeCount", ex.getLikeCount(), "liked", true);
+            likeRepo.deleteByExerciseIdAndClientId(id, clientId);
+            ex.setLikeCount(Math.max(0, ex.getLikeCount() - 1));
+            exerciseRepo.save(ex);
+            return Map.of("exerciseId", id, "likeCount", ex.getLikeCount(), "liked", false);
         }
         Like like = new Like();
         like.setExercise(ex);

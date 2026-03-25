@@ -150,7 +150,7 @@ export default function Home() {
               <button
                 style={{ ...S.likeBtn, ...(liked[ex.id] ? { background: '#fff5f5', borderColor: '#feb2b2', color: '#e53e3e' } : {}) }}
                 onClick={e => handleLike(e, ex.id)}
-                title={liked[ex.id] ? 'Already liked' : 'Like this exercise'}>
+                title={liked[ex.id] ? 'Unlike' : 'Like this exercise'}>
                 {liked[ex.id] ? '❤️' : '🤍'} {ex.likeCount}
               </button>
             </div>

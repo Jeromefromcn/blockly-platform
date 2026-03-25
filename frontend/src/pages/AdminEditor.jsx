@@ -3,35 +3,49 @@ import { useParams, useNavigate } from 'react-router-dom';
 import BlocklyWorkspace from '../components/BlocklyWorkspace.jsx';
 import { apiGet, apiPost, apiPut } from '../api.js';
 
-const BLOCKLY_BLOCKS = [
-  { type: "controls_if", label: "If" },
-  { type: "controls_repeat_ext", label: "Repeat" },
-  { type: "controls_whileUntil", label: "While" },
-  { type: "controls_for", label: "For" },
-  { type: "controls_forEach", label: "For Each" },
-  { type: "logic_compare", label: "Compare" },
-  { type: "logic_operation", label: "And/Or" },
-  { type: "logic_negate", label: "Not" },
-  { type: "logic_boolean", label: "True/False" },
-  { type: "math_number", label: "Number" },
-  { type: "math_arithmetic", label: "Arithmetic" },
-  { type: "math_single", label: "Math Functions" },
-  { type: "math_round", label: "Round" },
-  { type: "math_modulo", label: "Modulo" },
-  { type: "text", label: "Text" },
-  { type: "text_print", label: "Print" },
-  { type: "text_length", label: "Text Length" },
-  { type: "text_join", label: "Join" },
-  { type: "lists_create_with", label: "Create List" },
-  { type: "lists_length", label: "List Length" },
-  { type: "lists_getIndex", label: "Get Item" },
-  { type: "lists_setIndex", label: "Set Item" },
-  { type: "variables_get", label: "Get Variable" },
-  { type: "variables_set", label: "Set Variable" },
-  { type: "procedures_defnoreturn", label: "Define Function" },
-  { type: "procedures_defreturn", label: "Define Function (return)" },
-  { type: "procedures_callnoreturn", label: "Call Function" },
-  { type: "procedures_callreturn", label: "Call Function (return)" },
+const BLOCKLY_CATEGORIES = [
+  { category: "Logic", blocks: [
+    { type: "controls_if", label: "If" },
+    { type: "logic_compare", label: "Compare" },
+    { type: "logic_operation", label: "And / Or" },
+    { type: "logic_negate", label: "Not" },
+    { type: "logic_boolean", label: "True / False" },
+  ]},
+  { category: "Loops", blocks: [
+    { type: "controls_repeat_ext", label: "Repeat" },
+    { type: "controls_whileUntil", label: "While" },
+    { type: "controls_for", label: "For" },
+    { type: "controls_forEach", label: "For Each" },
+  ]},
+  { category: "Math", blocks: [
+    { type: "math_number", label: "Number" },
+    { type: "math_arithmetic", label: "Arithmetic" },
+    { type: "math_single", label: "Math Functions" },
+    { type: "math_round", label: "Round" },
+    { type: "math_modulo", label: "Modulo" },
+  ]},
+  { category: "Text", blocks: [
+    { type: "text", label: "Text" },
+    { type: "text_print", label: "Print" },
+    { type: "text_length", label: "Length" },
+    { type: "text_join", label: "Join" },
+  ]},
+  { category: "Lists", blocks: [
+    { type: "lists_create_with", label: "Create List" },
+    { type: "lists_length", label: "Length" },
+    { type: "lists_getIndex", label: "Get Item" },
+    { type: "lists_setIndex", label: "Set Item" },
+  ]},
+  { category: "Variables", blocks: [
+    { type: "variables_get", label: "Get Variable" },
+    { type: "variables_set", label: "Set Variable" },
+  ]},
+  { category: "Functions", blocks: [
+    { type: "procedures_defnoreturn", label: "Define (no return)" },
+    { type: "procedures_defreturn", label: "Define (return)" },
+    { type: "procedures_callnoreturn", label: "Call (no return)" },
+    { type: "procedures_callreturn", label: "Call (return)" },
+  ]},
 ];
 
 const S = {
@@ -249,19 +263,41 @@ export default function AdminEditor() {
                 Allow all blocks (no restrictions)
               </label>
               {!allowAllBlocks && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: 8 }}>
-                  {BLOCKLY_BLOCKS.map(b => (
-                    <label key={b.type} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.85rem', color: '#4a5568', cursor: 'pointer' }}>
-                      <input type="checkbox"
-                        checked={selectedBlocks.includes(b.type)}
-                        onChange={e => {
-                          if (e.target.checked) setSelectedBlocks([...selectedBlocks, b.type]);
-                          else setSelectedBlocks(selectedBlocks.filter(t => t !== b.type));
-                        }}
-                      />
-                      {b.label}
-                    </label>
-                  ))}
+                <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {BLOCKLY_CATEGORIES.map(cat => {
+                    const catTypes = cat.blocks.map(b => b.type);
+                    const allSelected = catTypes.every(t => selectedBlocks.includes(t));
+                    const someSelected = catTypes.some(t => selectedBlocks.includes(t));
+                    return (
+                      <div key={cat.category} style={{ border: '1px solid #e2e8f0', borderRadius: 6, padding: '8px 12px' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', fontWeight: 600, color: '#2d3748', cursor: 'pointer', marginBottom: 6 }}>
+                          <input type="checkbox"
+                            checked={allSelected}
+                            ref={el => { if (el) el.indeterminate = someSelected && !allSelected; }}
+                            onChange={e => {
+                              if (e.target.checked) setSelectedBlocks([...new Set([...selectedBlocks, ...catTypes])]);
+                              else setSelectedBlocks(selectedBlocks.filter(t => !catTypes.includes(t)));
+                            }}
+                          />
+                          {cat.category}
+                        </label>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 16px', paddingLeft: 8 }}>
+                          {cat.blocks.map(b => (
+                            <label key={b.type} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.82rem', color: '#4a5568', cursor: 'pointer' }}>
+                              <input type="checkbox"
+                                checked={selectedBlocks.includes(b.type)}
+                                onChange={e => {
+                                  if (e.target.checked) setSelectedBlocks([...selectedBlocks, b.type]);
+                                  else setSelectedBlocks(selectedBlocks.filter(t => t !== b.type));
+                                }}
+                              />
+                              {b.label}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

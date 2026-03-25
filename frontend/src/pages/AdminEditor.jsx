@@ -66,10 +66,11 @@ const S = {
 
 function runCode(code) {
   const logs = [];
-  const mockConsole = { log: (...args) => logs.push(args.map(String).join(' ')) };
+  const mockPrint = (...args) => logs.push(args.map(String).join(' '));
+  const mockConsole = { log: mockPrint };
   try {
-    const fn = new Function('console', code);
-    const result = fn(mockConsole);
+    const fn = new Function('console', 'print', code);
+    const result = fn(mockConsole, mockPrint);
     if (result !== undefined) logs.push(String(result));
     return { output: logs.join('\n') || '(no output)', error: null };
   } catch (e) {

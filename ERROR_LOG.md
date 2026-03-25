@@ -116,3 +116,12 @@ A chronological record of bugs and issues encountered in this project, including
 - **Files Changed**: `frontend/src/pages/Home.jsx`
 
 ---
+
+### [2026-03-25] Run button opens browser print dialog instead of executing code
+
+- **Symptom**: Clicking "Run" in AdminEditor (and Workspace) opened the browser's print dialog
+- **Root Cause**: The Blockly `text_print` block generates `print(...)` calls (overridden in `BlocklyWorkspace.jsx` from `window.alert` to `print()`). The `runCode` sandbox only injected a mock `console` but did not define `print`, so `window.print()` was called — the browser's native print function
+- **Fix**: Added `print` as a second injected parameter in `new Function('console', 'print', code)`, mapping it to the same log collector as `console.log`
+- **Files Changed**: `frontend/src/pages/AdminEditor.jsx`, `frontend/src/pages/Workspace.jsx`
+
+---

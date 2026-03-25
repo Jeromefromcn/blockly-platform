@@ -26,10 +26,19 @@ const S = {
   empty: { textAlign: 'center', color: '#a0aec0', padding: '60px 0', fontSize: '1rem' },
 };
 
+function generateUUID() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0;
+    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+  });
+}
+
 function getClientId() {
   let id = localStorage.getItem('clientId');
   if (!id) {
-    id = crypto.randomUUID();
+    id = (typeof crypto !== 'undefined' && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : generateUUID();
     localStorage.setItem('clientId', id);
   }
   return id;

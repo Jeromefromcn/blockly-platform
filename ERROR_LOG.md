@@ -102,6 +102,17 @@ A chronological record of bugs and issues encountered in this project, including
 - **Files Changed**:
   - `backend/src/main/java/com/blocklyplatform/config/SecurityConfig.java`
   - `backend/src/main/java/com/blocklyplatform/service/ExerciseService.java`
+  - `backend/src/main/java/com/blocklyplatform/config/SecurityConfig.java`
+  - `backend/src/main/java/com/blocklyplatform/service/ExerciseService.java`
   - `backend/src/main/java/com/blocklyplatform/repository/LikeRepository.java`
+
+---
+
+### [2026-03-25] Like button silently fails on HTTP (non-secure context)
+
+- **Symptom**: Like button had no effect in browser; no network request sent; API worked fine via curl
+- **Root Cause**: `crypto.randomUUID()` requires a **secure context** (HTTPS or localhost). The site runs over plain HTTP, so calling `crypto.randomUUID()` threw a `TypeError` which was silently swallowed by `catch {}` in `handleLike` — the request was never sent
+- **Fix**: Added a `generateUUID()` fallback using `Math.random()` for non-secure contexts. `getClientId()` now checks `crypto.randomUUID` availability before calling it
+- **Files Changed**: `frontend/src/pages/Home.jsx`
 
 ---

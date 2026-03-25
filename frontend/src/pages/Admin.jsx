@@ -3,33 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { apiDelete, apiGet, apiPatch, apiPost } from '../api.js';
 import { useToast } from '../components/Toast.jsx';
 
-const S = {
-  container: { maxWidth: 1100, margin: '32px auto', padding: '0 20px' },
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
-  h1: { fontSize: '1.4rem', fontWeight: 700, color: '#2d3748' },
-  btn: { padding: '8px 18px', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: '0.88rem' },
-  tabs: { display: 'flex', marginBottom: 20, borderBottom: '2px solid #e2e8f0' },
-  tab: { padding: '10px 24px', border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.92rem', color: '#718096', borderBottom: '3px solid transparent', marginBottom: -2 },
-  table: { width: '100%', borderCollapse: 'collapse', background: '#fff', borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' },
-  th: { background: '#f7fafc', padding: '10px 16px', textAlign: 'left', fontSize: '0.82rem', color: '#4a5568', fontWeight: 600, borderBottom: '2px solid #e2e8f0' },
-  td: { padding: '11px 16px', borderBottom: '1px solid #edf2f7', fontSize: '0.88rem', color: '#2d3748', verticalAlign: 'middle' },
-  importBox: { background: '#fff', borderRadius: 10, padding: 24, boxShadow: '0 1px 4px rgba(0,0,0,0.08)', marginBottom: 20 },
-  dropzone: {
-    border: '2px dashed #cbd5e0', borderRadius: 8, padding: '32px 20px',
-    textAlign: 'center', color: '#718096', cursor: 'pointer', transition: 'all 0.2s'
-  },
-  gradeModal: {
-    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100
-  },
-  modal: { background: '#fff', borderRadius: 10, padding: 28, width: 420, boxShadow: '0 8px 32px rgba(0,0,0,0.18)' },
-};
-
-const badge = status => ({
-  display: 'inline-block', padding: '2px 10px', borderRadius: 12, fontWeight: 600, fontSize: '0.78rem',
-  background: status === 'PUBLISHED' ? '#c6f6d5' : '#e2e8f0',
-  color: status === 'PUBLISHED' ? '#276749' : '#4a5568',
-});
+const NAV_ITEMS = [
+  { key: 'exercises', icon: '📚', label: 'Exercises' },
+  { key: 'submissions', icon: '📋', label: 'Submissions' },
+  { key: 'import', icon: '📥', label: 'Import & Grade' },
+];
 
 function runCodeForGrading(code) {
   const logs = [];
@@ -204,187 +182,215 @@ export default function Admin() {
     loadSubmissions();
   };
 
-  if (loading) return <div style={{ padding: 40 }}>Loading...</div>;
+  if (loading) return <div style={{ padding: 40, fontFamily: 'Inter, sans-serif' }}>Loading...</div>;
 
   return (
-    <div style={S.container}>
-      <div style={S.header}>
-        <h1 style={S.h1}>Admin Panel</h1>
-        {tab === 'exercises' && (
-          <button style={{ ...S.btn, background: '#2b6cb0', color: '#fff' }}
-            onClick={() => navigate('/admin/exercise/new')}>+ New Exercise</button>
-        )}
-      </div>
-
-      {(() => {
-        const stats = [
-          { label: 'Total Exercises', value: exercises.length, color: '#2b6cb0', bg: '#ebf8ff' },
-          { label: 'Published', value: exercises.filter(e => e.status === 'PUBLISHED').length, color: '#276749', bg: '#f0fff4' },
-          { label: 'Submissions', value: submissions.length, color: '#744210', bg: '#fffbeb' },
-          { label: 'Ungraded', value: submissions.filter(s => s.tutorScore == null).length, color: '#c53030', bg: '#fff5f5' },
-        ];
-        return (
-          <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
-            {stats.map(s => (
-              <div key={s.label} style={{
-                flex: '1 1 160px', background: s.bg, border: `1px solid ${s.color}22`,
-                borderRadius: 10, padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 4
-              }}>
-                <div style={{ fontSize: '1.8rem', fontWeight: 800, color: s.color }}>{s.value}</div>
-                <div style={{ fontSize: '0.78rem', color: '#718096', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{s.label}</div>
-              </div>
-            ))}
-          </div>
-        );
-      })()}
-
-      <div style={S.tabs}>
-        {[['exercises', 'Exercises'], ['submissions', 'Submissions'], ['import', 'Import & Grade']].map(([key, label]) => (
-          <button key={key} style={{ ...S.tab, ...(tab === key ? { color: '#2b6cb0', borderBottomColor: '#2b6cb0' } : {}) }}
-            onClick={() => setTab(key)}>{label}</button>
+    <div style={{ display: 'flex', height: 'calc(100vh - 60px)', background: '#f8fafc' }}>
+      {/* Sidebar */}
+      <aside style={{ width: 220, background: '#fff', borderRight: '1px solid #e2e8f0', padding: '24px 12px', display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0 }}>
+        <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.08em', padding: '0 12px', marginBottom: 8 }}>Admin Panel</div>
+        {NAV_ITEMS.map(item => (
+          <button key={item.key}
+            onClick={() => setTab(item.key)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: '9px 12px', border: 'none', borderRadius: 8, cursor: 'pointer',
+              fontSize: '0.88rem', fontWeight: tab === item.key ? 600 : 400,
+              background: tab === item.key ? '#eef2ff' : 'transparent',
+              color: tab === item.key ? '#6366f1' : '#4b5563',
+              textAlign: 'left', width: '100%', transition: 'all 0.15s',
+            }}>
+            <span style={{ fontSize: '1rem' }}>{item.icon}</span>
+            {item.label}
+            {item.key === 'submissions' && submissions.filter(s => s.tutorScore == null).length > 0 && (
+              <span style={{ marginLeft: 'auto', background: '#fef3c7', color: '#d97706', fontSize: '0.7rem', fontWeight: 700, padding: '1px 7px', borderRadius: 10 }}>
+                {submissions.filter(s => s.tutorScore == null).length}
+              </span>
+            )}
+          </button>
         ))}
-      </div>
+      </aside>
 
-      {/* Exercises Tab */}
-      {tab === 'exercises' && (
-        <table style={S.table}>
-          <thead>
-            <tr>{['ID', 'Code', 'Title', 'Category', 'Difficulty', 'Status', 'Version', 'Likes', 'Actions'].map(h => <th key={h} style={S.th}>{h}</th>)}</tr>
-          </thead>
-          <tbody>
-            {exercises.length === 0
-              ? <tr><td colSpan={9} style={{ ...S.td, textAlign: 'center', color: '#a0aec0' }}>No exercises</td></tr>
-              : exercises.map(ex => (
-                <tr key={ex.id}>
-                  <td style={S.td}>{ex.id}</td>
-                  <td style={{ ...S.td, fontFamily: 'monospace', fontSize: '0.82rem' }}>{ex.code}</td>
-                  <td style={S.td}>{ex.title}</td>
-                  <td style={S.td}>{ex.category || '—'}</td>
-                  <td style={S.td}><span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 12, fontSize: '0.75rem', fontWeight: 600, backgroundColor: ex.difficulty === 'EASY' ? '#c6f6d5' : ex.difficulty === 'MEDIUM' ? '#feebc8' : '#fed7d7', color: ex.difficulty === 'EASY' ? '#276749' : ex.difficulty === 'MEDIUM' ? '#744210' : '#c53030' }}>{ex.difficulty || 'MEDIUM'}</span></td>
-                  <td style={S.td}><span style={badge(ex.status)}>{ex.status}</span></td>
-                  <td style={S.td}>v{ex.currentVersionNumber}</td>
-                  <td style={S.td}>❤️ {ex.likeCount}</td>
-                  <td style={{ ...S.td, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    <button style={{ ...S.btn, background: '#ebf8ff', color: '#2b6cb0' }}
-                      onClick={() => navigate(`/admin/exercise/${ex.id}/edit`)}>Edit</button>
-                    <button style={{ ...S.btn, background: ex.status === 'PUBLISHED' ? '#fffaf0' : '#f0fff4', color: ex.status === 'PUBLISHED' ? '#c05621' : '#276749' }}
-                      onClick={() => toggleStatus(ex)}>
-                      {ex.status === 'PUBLISHED' ? 'Unpublish' : 'Publish'}
-                    </button>
-                    <button style={{ ...S.btn, background: '#fff5f5', color: '#c53030' }}
-                      onClick={() => deleteExercise(ex.id)}>Delete</button>
-                  </td>
-                </tr>
-              ))}
-          </tbody>
-        </table>
-      )}
-
-      {/* Submissions Tab */}
-      {tab === 'submissions' && (
-        <table style={S.table}>
-          <thead>
-            <tr>{['ID', 'Exercise', 'Student', 'Source File', 'Submitted', 'Score', 'Actions'].map(h => <th key={h} style={S.th}>{h}</th>)}</tr>
-          </thead>
-          <tbody>
-            {submissions.length === 0
-              ? <tr><td colSpan={7} style={{ ...S.td, textAlign: 'center', color: '#a0aec0' }}>No submissions</td></tr>
-              : submissions.map(s => (
-                <tr key={s.id}>
-                  <td style={S.td}>{s.id}</td>
-                  <td style={S.td}>{s.exerciseTitle}</td>
-                  <td style={S.td}>{s.studentName || '—'}</td>
-                  <td style={{ ...S.td, fontFamily: 'monospace', fontSize: '0.8rem', color: '#4a5568' }}>{s.sourceFilename}</td>
-                  <td style={S.td}>{new Date(s.submittedAt).toLocaleString()}</td>
-                  <td style={{ ...S.td, fontWeight: 700 }}>
-                    {s.autoScore != null && (
-                      <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 10, fontSize: '0.75rem', fontWeight: 600, background: '#ebf8ff', color: '#2b6cb0', marginRight: 6 }}>
-                        Auto: {s.autoScore}
-                      </span>
-                    )}
-                    {s.tutorScore != null
-                      ? <span style={{ color: '#2b6cb0' }}>{s.tutorScore}/100</span>
-                      : <span style={{ color: '#a0aec0', fontWeight: 400 }}>Ungraded</span>}
-                  </td>
-                  <td style={S.td}>
-                    <button style={{ ...S.btn, background: '#ebf8ff', color: '#2b6cb0' }}
-                      onClick={() => openGrade(s)}>
-                      {s.tutorScore != null ? 'Re-grade' : 'Grade'}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-          </tbody>
-        </table>
-      )}
-
-      {/* Import & Grade Tab */}
-      {tab === 'import' && (
-        <div>
-          <div style={S.importBox}>
-            <h2 style={{ fontSize: '1rem', marginBottom: 8, color: '#2d3748' }}>Batch Import Student Answers</h2>
-            <p style={{ fontSize: '0.85rem', color: '#718096', marginBottom: 16 }}>
-              Upload one or more student JSON files. Each file should contain:
-              <code style={{ background: '#f7fafc', padding: '2px 6px', borderRadius: 4, marginLeft: 6 }}>
-                {`{ "exerciseId": 1, "studentName": "...", "blocklyState": {...} }`}
-              </code>
-            </p>
-            <div style={S.dropzone}
-              onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderColor = '#4299e1'; e.currentTarget.style.background = '#ebf8ff'; }}
-              onDragLeave={e => { e.currentTarget.style.borderColor = '#cbd5e0'; e.currentTarget.style.background = ''; }}
-              onDrop={e => { e.preventDefault(); e.currentTarget.style.borderColor = '#cbd5e0'; e.currentTarget.style.background = ''; fileInputRef.current.files = e.dataTransfer.files; handleImport({ target: { files: e.dataTransfer.files, value: '' } }); }}
-              onClick={() => fileInputRef.current?.click()}>
-              <div style={{ fontSize: '2rem', marginBottom: 8 }}>📂</div>
-              <div>Click to select files or drag & drop</div>
-              <div style={{ fontSize: '0.8rem', marginTop: 4, color: '#a0aec0' }}>Accepts .json files</div>
+      {/* Main */}
+      <main style={{ flex: 1, overflowY: 'auto', padding: '32px 36px' }}>
+        {/* Stats row */}
+        <div style={{ display: 'flex', gap: 16, marginBottom: 32, flexWrap: 'wrap' }}>
+          {[
+            { label: 'Exercises', value: exercises.length, color: '#6366f1', bg: '#eef2ff' },
+            { label: 'Published', value: exercises.filter(e => e.status === 'PUBLISHED').length, color: '#16a34a', bg: '#dcfce7' },
+            { label: 'Submissions', value: submissions.length, color: '#d97706', bg: '#fef3c7' },
+            { label: 'Ungraded', value: submissions.filter(s => s.tutorScore == null).length, color: '#dc2626', bg: '#fee2e2' },
+          ].map(s => (
+            <div key={s.label} style={{ flex: '1 1 140px', background: s.bg, borderRadius: 12, padding: '16px 20px' }}>
+              <div style={{ fontSize: '2rem', fontWeight: 800, color: s.color, lineHeight: 1 }}>{s.value}</div>
+              <div style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: 600, marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{s.label}</div>
             </div>
-            <input ref={fileInputRef} type="file" accept=".json" multiple style={{ display: 'none' }} onChange={handleImport} />
-          </div>
-
-          {importResults && (
-            <div style={{ ...S.importBox, marginTop: 0 }}>
-              <h3 style={{ fontSize: '0.95rem', marginBottom: 12, color: '#2d3748' }}>Import Results</h3>
-              <table style={S.table}>
-                <thead><tr>{['Filename', 'Status', 'Submission ID'].map(h => <th key={h} style={S.th}>{h}</th>)}</tr></thead>
-                <tbody>
-                  {importResults.map((r, i) => (
-                    <tr key={i}>
-                      <td style={{ ...S.td, fontFamily: 'monospace', fontSize: '0.82rem' }}>{r.filename}</td>
-                      <td style={S.td}>
-                        <span style={{ ...badge(r.status === 'imported' ? 'PUBLISHED' : 'DRAFT') }}>
-                          {r.status}
-                        </span>
-                        {r.message && <span style={{ marginLeft: 8, color: '#e53e3e', fontSize: '0.8rem' }}>{r.message}</span>}
-                      </td>
-                      <td style={S.td}>{r.submissionId || '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          ))}
         </div>
-      )}
+
+        {/* Exercises Tab */}
+        {tab === 'exercises' && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#111827', margin: 0 }}>Exercises</h2>
+              <button style={{ padding: '9px 18px', border: 'none', borderRadius: 8, background: '#6366f1', color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: 6 }}
+                onClick={() => navigate('/admin/exercise/new')}>
+                + New Exercise
+              </button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+              {exercises.length === 0
+                ? <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '60px 0', color: '#9ca3af' }}>
+                    <div style={{ fontSize: '2.5rem', marginBottom: 8 }}>📭</div>
+                    <div style={{ fontWeight: 600 }}>No exercises yet</div>
+                  </div>
+                : exercises.map(ex => (
+                  <div key={ex.id} style={{
+                    background: '#fff', borderRadius: 12, padding: '20px',
+                    border: '1px solid #e2e8f0',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                    display: 'flex', flexDirection: 'column', gap: 12,
+                    transition: 'box-shadow 0.15s',
+                  }}
+                    onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)'}
+                    onMouseLeave={e => e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)'}>
+                    {/* Card header */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#111827', marginBottom: 4 }}>{ex.title}</div>
+                        <div style={{ fontSize: '0.75rem', color: '#9ca3af', fontFamily: 'monospace' }}>{ex.code}</div>
+                      </div>
+                      <span style={{
+                        padding: '3px 10px', borderRadius: 20, fontSize: '0.72rem', fontWeight: 600,
+                        background: ex.status === 'PUBLISHED' ? '#dcfce7' : '#f1f5f9',
+                        color: ex.status === 'PUBLISHED' ? '#15803d' : '#6b7280',
+                      }}>{ex.status}</span>
+                    </div>
+                    {/* Badges row */}
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      {ex.category && <span style={{ padding: '2px 8px', borderRadius: 6, background: '#f1f5f9', color: '#374151', fontSize: '0.75rem', fontWeight: 500 }}>{ex.category}</span>}
+                      <span style={{
+                        padding: '2px 8px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 600,
+                        background: ex.difficulty === 'EASY' ? '#dcfce7' : ex.difficulty === 'HARD' ? '#fee2e2' : '#fef3c7',
+                        color: ex.difficulty === 'EASY' ? '#15803d' : ex.difficulty === 'HARD' ? '#dc2626' : '#d97706',
+                      }}>{ex.difficulty}</span>
+                      <span style={{ padding: '2px 8px', borderRadius: 6, background: '#f1f5f9', color: '#6b7280', fontSize: '0.75rem' }}>v{ex.currentVersionNumber}</span>
+                      <span style={{ padding: '2px 8px', borderRadius: 6, background: '#f1f5f9', color: '#6b7280', fontSize: '0.75rem' }}>❤️ {ex.likeCount}</span>
+                    </div>
+                    {/* Actions */}
+                    <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                      <button style={{ flex: 1, padding: '7px', border: '1px solid #e2e8f0', borderRadius: 7, background: '#fff', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, color: '#374151' }}
+                        onClick={() => navigate(`/admin/exercise/${ex.id}/edit`)}>Edit</button>
+                      <button style={{ flex: 1, padding: '7px', border: 'none', borderRadius: 7, cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600,
+                        background: ex.status === 'PUBLISHED' ? '#fef3c7' : '#dcfce7',
+                        color: ex.status === 'PUBLISHED' ? '#d97706' : '#15803d' }}
+                        onClick={() => toggleStatus(ex)}>{ex.status === 'PUBLISHED' ? 'Unpublish' : 'Publish'}</button>
+                      <button style={{ padding: '7px 12px', border: 'none', borderRadius: 7, background: '#fee2e2', color: '#dc2626', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}
+                        onClick={() => deleteExercise(ex.id)}>✕</button>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
+
+        {/* Submissions Tab */}
+        {tab === 'submissions' && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#111827', margin: 0 }}>Submissions</h2>
+            </div>
+            {submissions.length === 0
+              ? <div style={{ textAlign: 'center', padding: '60px 0', color: '#9ca3af' }}>
+                  <div style={{ fontSize: '2.5rem', marginBottom: 8 }}>📭</div>
+                  <div style={{ fontWeight: 600 }}>No submissions yet</div>
+                </div>
+              : <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {submissions.map(s => (
+                    <div key={s.id} style={{ background: '#fff', borderRadius: 10, padding: '16px 20px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: 16 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: '0.92rem', color: '#111827' }}>{s.studentName || 'Unknown'}</div>
+                        <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: 2 }}>{s.exerciseTitle} · <span style={{ fontFamily: 'monospace' }}>{s.sourceFilename}</span></div>
+                      </div>
+                      <div style={{ fontSize: '0.8rem', color: '#9ca3af', whiteSpace: 'nowrap' }}>{new Date(s.submittedAt).toLocaleDateString()}</div>
+                      <div style={{ minWidth: 80, textAlign: 'right' }}>
+                        {s.tutorScore != null
+                          ? <span style={{ fontWeight: 700, color: '#6366f1' }}>{s.tutorScore}/100</span>
+                          : <span style={{ fontSize: '0.78rem', color: '#d97706', fontWeight: 600, background: '#fef3c7', padding: '2px 8px', borderRadius: 6 }}>Ungraded</span>}
+                      </div>
+                      <button style={{ padding: '7px 16px', border: 'none', borderRadius: 7, background: '#eef2ff', color: '#6366f1', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600, whiteSpace: 'nowrap' }}
+                        onClick={() => openGrade(s)}>{s.tutorScore != null ? 'Re-grade' : 'Grade'}</button>
+                    </div>
+                  ))}
+                </div>}
+          </div>
+        )}
+
+        {/* Import Tab */}
+        {tab === 'import' && (
+          <div>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#111827', marginBottom: 20, marginTop: 0 }}>Import & Grade</h2>
+            <div style={{ background: '#fff', borderRadius: 12, padding: 24, border: '1px solid #e2e8f0', marginBottom: 20 }}>
+              <div style={{ fontWeight: 600, fontSize: '0.95rem', color: '#111827', marginBottom: 6 }}>Batch Import Student Answers</div>
+              <p style={{ fontSize: '0.85rem', color: '#6b7280', marginBottom: 16, marginTop: 0 }}>
+                Upload one or more student JSON files. Each file should contain:
+                <code style={{ background: '#f1f5f9', padding: '2px 6px', borderRadius: 4, marginLeft: 6, fontSize: '0.8rem' }}>
+                  {`{ "exerciseId": 1, "studentName": "...", "blocklyState": {...} }`}
+                </code>
+              </p>
+              <div
+                style={{ border: '2px dashed #c7d2fe', borderRadius: 10, padding: '40px 20px', textAlign: 'center', color: '#6366f1', cursor: 'pointer', background: '#fafafe', transition: 'all 0.2s' }}
+                onDragOver={e => { e.preventDefault(); e.currentTarget.style.background = '#eef2ff'; }}
+                onDragLeave={e => { e.currentTarget.style.background = '#fafafe'; }}
+                onDrop={e => { e.preventDefault(); e.currentTarget.style.background = '#fafafe'; fileInputRef.current.files = e.dataTransfer.files; handleImport({ target: { files: e.dataTransfer.files, value: '' } }); }}
+                onClick={() => fileInputRef.current?.click()}>
+                <div style={{ fontSize: '2.5rem', marginBottom: 8 }}>📂</div>
+                <div style={{ fontWeight: 600, marginBottom: 4 }}>Click to select or drag & drop</div>
+                <div style={{ fontSize: '0.8rem', color: '#818cf8' }}>Accepts .json files</div>
+              </div>
+              <input ref={fileInputRef} type="file" accept=".json" multiple style={{ display: 'none' }} onChange={handleImport} />
+            </div>
+            {importResults && (
+              <div style={{ background: '#fff', borderRadius: 12, padding: 24, border: '1px solid #e2e8f0' }}>
+                <div style={{ fontWeight: 600, fontSize: '0.95rem', color: '#111827', marginBottom: 16 }}>Import Results</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {importResults.map((r, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 8, background: r.status === 'imported' ? '#f0fdf4' : '#fef2f2', border: `1px solid ${r.status === 'imported' ? '#bbf7d0' : '#fecaca'}` }}>
+                      <span>{r.status === 'imported' ? '✅' : '❌'}</span>
+                      <span style={{ fontFamily: 'monospace', fontSize: '0.82rem', flex: 1 }}>{r.filename}</span>
+                      {r.submissionId && <span style={{ fontSize: '0.78rem', color: '#6b7280' }}>ID: {r.submissionId}</span>}
+                      {r.message && <span style={{ fontSize: '0.78rem', color: '#dc2626' }}>{r.message}</span>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </main>
 
       {/* Grade Modal */}
       {grading && (
-        <div style={S.gradeModal} onClick={() => setGrading(null)}>
-          <div style={S.modal} onClick={e => e.stopPropagation()}>
-            <h3 style={{ marginBottom: 6, fontSize: '1rem', color: '#2d3748' }}>Grade Submission</h3>
-            <p style={{ fontSize: '0.85rem', color: '#718096', marginBottom: 16, fontFamily: 'monospace' }}>
-              {grading.sourceFilename}
-            </p>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }}
+          onClick={() => setGrading(null)}>
+          <div style={{ background: '#fff', borderRadius: 16, padding: 32, width: 460, boxShadow: '0 20px 60px rgba(0,0,0,0.2)', maxHeight: '80vh', overflowY: 'auto' }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ fontWeight: 700, fontSize: '1.1rem', color: '#111827', marginBottom: 4 }}>Grade Submission</div>
+            <div style={{ fontSize: '0.82rem', color: '#6b7280', fontFamily: 'monospace', marginBottom: 20 }}>{grading.sourceFilename}</div>
+
+            {grading.aspectResults === null && (
+              <div style={{ fontSize: '0.82rem', color: '#9ca3af', marginBottom: 16 }}>Loading grading results...</div>
+            )}
             {grading.aspectResults && grading.aspectResults.length > 0 && (
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#718096', marginBottom: 8 }}>Grading Results:</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>Grading Results</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {grading.aspectResults.map((a, i) => (
                     <div key={i} style={{
-                      display: 'flex', alignItems: 'center', gap: 8,
-                      padding: '5px 10px', borderRadius: 6,
-                      background: a.passed ? '#f0fff4' : '#fff5f5',
-                      border: `1px solid ${a.passed ? '#9ae6b4' : '#feb2b2'}`,
-                      fontSize: '0.82rem', color: a.passed ? '#276749' : '#c53030'
+                      display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8,
+                      background: a.passed ? '#f0fdf4' : '#fef2f2',
+                      border: `1px solid ${a.passed ? '#bbf7d0' : '#fecaca'}`,
+                      fontSize: '0.83rem', color: a.passed ? '#15803d' : '#dc2626', fontWeight: 500,
                     }}>
                       <span>{a.passed ? '✅' : '❌'}</span>
                       <span>{a.label}</span>
@@ -393,25 +399,19 @@ export default function Admin() {
                 </div>
               </div>
             )}
-            {grading.aspectResults === null && (
-              <div style={{ fontSize: '0.82rem', color: '#a0aec0', marginBottom: 14 }}>Loading grading results...</div>
-            )}
-            <label style={S.label ?? { display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#718096', marginBottom: 5 }}>
-              Score (0–100)
-            </label>
+
+            <div style={{ fontSize: '0.78rem', fontWeight: 600, color: '#374151', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Score (0–100)</div>
             <input type="number" min={0} max={100} placeholder="e.g. 85"
-              style={{ width: '100%', padding: '9px 12px', border: '1px solid #cbd5e0', borderRadius: 6, fontSize: '1.1rem', fontWeight: 700, marginBottom: 14, outline: 'none' }}
+              style={{ width: '100%', padding: '10px 14px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: '1.1rem', fontWeight: 700, marginBottom: 16, outline: 'none', boxSizing: 'border-box' }}
               value={gradeForm.score} onChange={e => setGradeForm(f => ({ ...f, score: e.target.value }))} />
-            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#718096', marginBottom: 5 }}>
-              Comment (optional)
-            </label>
+            <div style={{ fontSize: '0.78rem', fontWeight: 600, color: '#374151', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Comment (optional)</div>
             <textarea rows={3} placeholder="Feedback for the student..."
-              style={{ width: '100%', padding: '9px 12px', border: '1px solid #cbd5e0', borderRadius: 6, fontSize: '0.9rem', resize: 'vertical', outline: 'none', marginBottom: 18 }}
+              style={{ width: '100%', padding: '10px 14px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: '0.9rem', resize: 'vertical', outline: 'none', marginBottom: 20, boxSizing: 'border-box' }}
               value={gradeForm.comment} onChange={e => setGradeForm(f => ({ ...f, comment: e.target.value }))} />
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button style={{ padding: '9px 20px', border: 'none', borderRadius: 6, cursor: 'pointer', background: '#e2e8f0', color: '#4a5568', fontWeight: 600 }}
+              <button style={{ padding: '9px 20px', border: '1px solid #e2e8f0', borderRadius: 8, cursor: 'pointer', background: '#fff', color: '#4b5563', fontWeight: 600, fontSize: '0.88rem' }}
                 onClick={() => setGrading(null)}>Cancel</button>
-              <button style={{ padding: '9px 20px', border: 'none', borderRadius: 6, cursor: 'pointer', background: '#2b6cb0', color: '#fff', fontWeight: 600 }}
+              <button style={{ padding: '9px 20px', border: 'none', borderRadius: 8, cursor: 'pointer', background: '#6366f1', color: '#fff', fontWeight: 600, fontSize: '0.88rem' }}
                 onClick={submitGrade}>Save Grade</button>
             </div>
           </div>

@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Link, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import Home from './pages/Home.jsx';
 import Workspace from './pages/Workspace.jsx';
 import Admin from './pages/Admin.jsx';
@@ -9,14 +9,8 @@ import SuperAdminPanel from './pages/SuperAdminPanel.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 
-const NAV_STYLE = {
-  background: '#fff', borderBottom: '1px solid #edf2f7', padding: '0 24px', height: 56,
-  display: 'flex', alignItems: 'center', gap: '24px',
-  boxShadow: '0 1px 3px rgba(0,0,0,0.04)', position: 'sticky', top: 0, zIndex: 100
-};
-
 function NavBar() {
-  const { user, logout, hasPermission } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -24,52 +18,69 @@ function NavBar() {
     navigate('/login');
   };
 
-  const role = user?.role;
   return (
-    <nav style={NAV_STYLE}>
-      <Link to="/" style={{ fontWeight: 800, fontSize: '1.1rem', color: '#1a202c', letterSpacing: '-0.02em', textDecoration: 'none' }}>
-        Blockly Exercise Platform
-      </Link>
-      {user && hasPermission('MANAGE_EXERCISES') && (
-        <Link to="/admin" style={{ color: '#4a5568', textDecoration: 'none', fontSize: '0.88rem', fontWeight: 500 }}>
-          Admin Panel
-        </Link>
+    <header style={{
+      background: '#fff',
+      borderBottom: '1px solid #e2e8f0',
+      height: 60,
+      display: 'flex', alignItems: 'center',
+      padding: '0 28px',
+      position: 'sticky', top: 0, zIndex: 200,
+      boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+      gap: 24,
+    }}>
+      {/* Logo */}
+      <a href="/" style={{ fontWeight: 800, fontSize: '1.15rem', color: '#6366f1', letterSpacing: '-0.03em', display: 'flex', alignItems: 'center', gap: 8 }}>
+        🧩 Blockly
+      </a>
+
+      {/* Nav links - only show when logged in */}
+      {user && (
+        <nav style={{ display: 'flex', gap: 4, flex: 1 }}>
+          {/* Show Home link for everyone */}
+          <a href="/" style={{ padding: '6px 12px', borderRadius: 8, fontSize: '0.88rem', fontWeight: 500, color: '#4a5568', transition: 'background 0.15s' }}
+            onMouseEnter={e => e.currentTarget.style.background = '#f1f5f9'}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+            Home
+          </a>
+          {/* Show Admin link for TUTOR and SUPER_ADMIN */}
+          {(user.role === 'TUTOR' || user.role === 'SUPER_ADMIN') && (
+            <a href="/admin" style={{ padding: '6px 12px', borderRadius: 8, fontSize: '0.88rem', fontWeight: 500, color: '#4a5568', transition: 'background 0.15s' }}
+              onMouseEnter={e => e.currentTarget.style.background = '#f1f5f9'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+              Admin
+            </a>
+          )}
+        </nav>
       )}
-      {user && user.role === 'SUPER_ADMIN' && (
-        <Link to="/super-admin" style={{ color: '#4a5568', textDecoration: 'none', fontSize: '0.88rem', fontWeight: 500 }}>
-          User Management
-        </Link>
-      )}
+
+      {/* Right section */}
       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
         {user ? (
           <>
-            {role && (
-              <span style={{
-                padding: '2px 10px', borderRadius: 20, fontSize: '0.72rem', fontWeight: 700,
-                textTransform: 'uppercase', letterSpacing: '0.06em',
-                background: role === 'SUPER_ADMIN' ? '#e9d8fd' : role === 'TUTOR' ? '#bee3f8' : '#c6f6d5',
-                color: role === 'SUPER_ADMIN' ? '#553c9a' : role === 'TUTOR' ? '#2c5282' : '#22543d',
-              }}>
-                {role.replace('_', ' ')}
-              </span>
-            )}
-            <Link to="/profile" style={{ color: '#2d3748', textDecoration: 'none', fontSize: '0.88rem', fontWeight: 600 }}>
-              {user.username}
-            </Link>
+            <span style={{
+              padding: '3px 10px', borderRadius: 20, fontSize: '0.72rem', fontWeight: 700,
+              textTransform: 'uppercase', letterSpacing: '0.06em',
+              background: user.role === 'SUPER_ADMIN' ? '#ede9fe' : user.role === 'TUTOR' ? '#dbeafe' : '#dcfce7',
+              color: user.role === 'SUPER_ADMIN' ? '#5b21b6' : user.role === 'TUTOR' ? '#1d4ed8' : '#15803d',
+            }}>{user.role?.replace('_', ' ')}</span>
+            <a href="/profile" style={{ fontSize: '0.88rem', fontWeight: 500, color: '#374151' }}>{user.username}</a>
             <div style={{ width: 1, height: 20, background: '#e2e8f0' }} />
-            <button
-              onClick={handleLogout}
-              style={{ background: 'none', border: '1px solid #e2e8f0', color: '#4a5568', padding: '5px 14px', borderRadius: 6, cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600 }}>
-              Logout
+            <button onClick={handleLogout} style={{
+              padding: '6px 14px', border: '1px solid #e2e8f0', borderRadius: 8,
+              background: '#fff', cursor: 'pointer', fontSize: '0.82rem', color: '#6b7280', fontWeight: 500,
+              transition: 'all 0.15s'
+            }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#f9fafb'; e.currentTarget.style.borderColor = '#d1d5db'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = '#e2e8f0'; }}>
+              Sign out
             </button>
           </>
         ) : (
-          <Link to="/login" style={{ color: '#4a5568', textDecoration: 'none', fontSize: '0.88rem', fontWeight: 500 }}>
-            Login
-          </Link>
+          <a href="/login" style={{ padding: '7px 18px', borderRadius: 8, background: '#6366f1', color: '#fff', fontSize: '0.88rem', fontWeight: 600 }}>Sign in</a>
         )}
       </div>
-    </nav>
+    </header>
   );
 }
 

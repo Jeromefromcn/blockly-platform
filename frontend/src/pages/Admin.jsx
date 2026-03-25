@@ -30,6 +30,98 @@ const badge = status => ({
   color: status === 'PUBLISHED' ? '#276749' : '#4a5568',
 });
 
+function runCodeForGrading(code) {
+  const logs = [];
+  const mockPrint = (...args) => logs.push(args.map(String).join(' '));
+  try {
+    const fn = new Function('console', 'print', code);
+    fn({ log: mockPrint }, mockPrint);
+    return logs.join('\n');
+  } catch {
+    return null;
+  }
+}
+
+function extractBlockTypes(state) {
+  const types = new Set();
+  function traverse(obj) {
+    if (!obj || typeof obj !== 'object') return;
+    if (Array.isArray(obj)) { obj.forEach(traverse); return; }
+    if (obj.type && typeof obj.type === 'string') types.add(obj.type);
+    Object.values(obj).forEach(traverse);
+  }
+  try {
+    const parsed = typeof state === 'string' ? JSON.parse(state) : state;
+    traverse(parsed);
+  } catch {}
+  return types;
+}
+
+function countBlocks(state) {
+  let count = 0;
+  function traverse(obj) {
+    if (!obj || typeof obj !== 'object') return;
+    if (Array.isArray(obj)) { obj.forEach(traverse); return; }
+    if (obj.type && typeof obj.type === 'string') count++;
+    Object.values(obj).forEach(traverse);
+  }
+  try {
+    const parsed = typeof state === 'string' ? JSON.parse(state) : state;
+    traverse(parsed);
+  } catch {}
+  return count;
+}
+
+function parseAspects(gradingMode) {
+  try {
+    const parsed = JSON.parse(gradingMode);
+    if (Array.isArray(parsed)) return parsed;
+  } catch {}
+  return [{ type: 'OUTPUT_MATCH' }];
+}
+
+function gradeAspects(aspects, generatedCode, expectedOutput, blocklyState) {
+  const actualOutput = generatedCode ? runCodeForGrading(generatedCode) : null;
+  return aspects.map(aspect => {
+    switch (aspect.type) {
+      case 'OUTPUT_MATCH': {
+        if (actualOutput === null) return { type: 'OUTPUT_MATCH', label: 'Output matches expected', passed: false, note: 'No generated code' };
+        const passed = actualOutput.trim() === (expectedOutput || '').trim();
+        return { type: 'OUTPUT_MATCH', label: 'Output matches expected', passed };
+      }
+      case 'REQUIRED_BLOCKS': {
+        const used = extractBlockTypes(blocklyState);
+        const missing = (aspect.blocks || []).filter(b => !used.has(b));
+        return {
+          type: 'REQUIRED_BLOCKS',
+          label: `Uses required blocks${aspect.blocks?.length ? ': ' + aspect.blocks.join(', ') : ''}`,
+          passed: missing.length === 0,
+        };
+      }
+      case 'FORBIDDEN_BLOCKS': {
+        const used = extractBlockTypes(blocklyState);
+        const found = (aspect.blocks || []).filter(b => used.has(b));
+        return {
+          type: 'FORBIDDEN_BLOCKS',
+          label: `Does not use forbidden blocks${aspect.blocks?.length ? ': ' + aspect.blocks.join(', ') : ''}`,
+          passed: found.length === 0,
+        };
+      }
+      case 'MAX_BLOCKS': {
+        const count = countBlocks(blocklyState);
+        const max = aspect.max || 10;
+        return {
+          type: 'MAX_BLOCKS',
+          label: `Solution uses \u2264 ${max} blocks (used: ${count})`,
+          passed: count <= max,
+        };
+      }
+      default:
+        return { type: aspect.type, label: aspect.type, passed: false };
+    }
+  });
+}
+
 export default function Admin() {
   const [tab, setTab] = useState('exercises');
   const [exercises, setExercises] = useState([]);
@@ -75,9 +167,29 @@ export default function Admin() {
     e.target.value = '';
   };
 
-  const openGrade = (sub) => {
-    setGrading({ submissionId: sub.id, sourceFilename: sub.sourceFilename, autoScore: sub.autoScore ?? null });
+  const openGrade = async (sub) => {
+    setGrading({ submissionId: sub.id, sourceFilename: sub.sourceFilename, autoScore: sub.autoScore ?? null, aspectResults: null });
     setGradeForm({ score: sub.tutorScore ?? '', comment: sub.tutorComment ?? '' });
+
+    try {
+      const [detailRes, exerciseRes] = await Promise.all([
+        apiGet(`/api/submissions/${sub.id}`),
+        apiGet(`/api/exercises/${sub.exerciseId}`),
+      ]);
+      const detail = await detailRes.json();
+      const exercise = await exerciseRes.json();
+
+      const gradingMode = exercise.version?.gradingMode;
+      const expectedOutput = exercise.version?.expectedOutput;
+
+      if (gradingMode) {
+        const aspects = parseAspects(gradingMode);
+        const results = gradeAspects(aspects, detail.generatedCode, expectedOutput, detail.blocklyState);
+        setGrading(prev => prev ? { ...prev, aspectResults: results } : prev);
+      } else {
+        setGrading(prev => prev ? { ...prev, aspectResults: [] } : prev);
+      }
+    } catch {}
   };
 
   const submitGrade = async () => {
@@ -238,11 +350,27 @@ export default function Admin() {
             <p style={{ fontSize: '0.85rem', color: '#718096', marginBottom: 16, fontFamily: 'monospace' }}>
               {grading.sourceFilename}
             </p>
-            {grading.autoScore != null && (
-              <div style={{ background: '#ebf8ff', border: '1px solid #bee3f8', borderRadius: 6, padding: '8px 12px', marginBottom: 14, fontSize: '0.85rem', color: '#2c5282' }}>
-                Auto-grader score: <strong>{grading.autoScore}/100</strong>
-                <span style={{ color: '#718096', marginLeft: 6, fontWeight: 400 }}>(for reference)</span>
+            {grading.aspectResults && grading.aspectResults.length > 0 && (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#718096', marginBottom: 8 }}>Grading Results:</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  {grading.aspectResults.map((a, i) => (
+                    <div key={i} style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      padding: '5px 10px', borderRadius: 6,
+                      background: a.passed ? '#f0fff4' : '#fff5f5',
+                      border: `1px solid ${a.passed ? '#9ae6b4' : '#feb2b2'}`,
+                      fontSize: '0.82rem', color: a.passed ? '#276749' : '#c53030'
+                    }}>
+                      <span>{a.passed ? '✅' : '❌'}</span>
+                      <span>{a.label}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
+            )}
+            {grading.aspectResults === null && (
+              <div style={{ fontSize: '0.82rem', color: '#a0aec0', marginBottom: 14 }}>Loading grading results...</div>
             )}
             <label style={S.label ?? { display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#718096', marginBottom: 5 }}>
               Score (0–100)

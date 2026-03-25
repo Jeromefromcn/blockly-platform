@@ -21,85 +21,6 @@ const S = {
   outputLabel: { fontSize: '0.78rem', fontWeight: 600, color: '#718096', marginBottom: 2 },
 };
 
-// Recursively collect all block types from Blockly workspace state JSON
-function extractBlockTypes(state) {
-  const types = new Set();
-  function traverse(obj) {
-    if (!obj || typeof obj !== 'object') return;
-    if (Array.isArray(obj)) { obj.forEach(traverse); return; }
-    if (obj.type && typeof obj.type === 'string') types.add(obj.type);
-    Object.values(obj).forEach(traverse);
-  }
-  try {
-    const parsed = typeof state === 'string' ? JSON.parse(state) : state;
-    traverse(parsed);
-  } catch {}
-  return types;
-}
-
-function countBlocks(state) {
-  let count = 0;
-  function traverse(obj) {
-    if (!obj || typeof obj !== 'object') return;
-    if (Array.isArray(obj)) { obj.forEach(traverse); return; }
-    if (obj.type && typeof obj.type === 'string') count++;
-    Object.values(obj).forEach(traverse);
-  }
-  try {
-    const parsed = typeof state === 'string' ? JSON.parse(state) : state;
-    traverse(parsed);
-  } catch {}
-  return count;
-}
-
-function parseAspects(gradingMode) {
-  try {
-    const parsed = JSON.parse(gradingMode);
-    if (Array.isArray(parsed)) return parsed;
-  } catch {}
-  return [{ type: 'OUTPUT_MATCH' }];
-}
-
-function gradeAspects(aspects, actualOutput, expectedOutput, workspaceState) {
-  return aspects.map(aspect => {
-    switch (aspect.type) {
-      case 'OUTPUT_MATCH': {
-        const passed = (actualOutput || '').trim() === (expectedOutput || '').trim();
-        return { type: 'OUTPUT_MATCH', label: 'Output matches expected', passed };
-      }
-      case 'REQUIRED_BLOCKS': {
-        const used = extractBlockTypes(workspaceState);
-        const missing = (aspect.blocks || []).filter(b => !used.has(b));
-        return {
-          type: 'REQUIRED_BLOCKS',
-          label: `Uses required blocks${aspect.blocks?.length ? ': ' + aspect.blocks.join(', ') : ''}`,
-          passed: missing.length === 0,
-        };
-      }
-      case 'FORBIDDEN_BLOCKS': {
-        const used = extractBlockTypes(workspaceState);
-        const found = (aspect.blocks || []).filter(b => used.has(b));
-        return {
-          type: 'FORBIDDEN_BLOCKS',
-          label: `Does not use forbidden blocks${aspect.blocks?.length ? ': ' + aspect.blocks.join(', ') : ''}`,
-          passed: found.length === 0,
-        };
-      }
-      case 'MAX_BLOCKS': {
-        const count = countBlocks(workspaceState);
-        const max = aspect.max || 10;
-        return {
-          type: 'MAX_BLOCKS',
-          label: `Solution uses \u2264 ${max} blocks (used: ${count})`,
-          passed: count <= max,
-        };
-      }
-      default:
-        return { type: aspect.type, label: aspect.type, passed: false };
-    }
-  });
-}
-
 function runCode(code) {
   const logs = [];
   const mockPrint = (...args) => logs.push(args.map(String).join(' '));
@@ -166,13 +87,6 @@ export default function Workspace() {
     if (!wsRef.current) return;
     const code = wsRef.current.getCode();
     const result = runCode(code);
-    const gradingMode = exercise?.version?.gradingMode;
-    const expectedOutput = exercise?.version?.expectedOutput;
-    if (gradingMode && !result.error) {
-      const aspects = parseAspects(gradingMode);
-      const workspaceState = wsRef.current.getState();
-      result.aspects = gradeAspects(aspects, result.output, expectedOutput, workspaceState);
-    }
     setRunResult(result);
   };
 
@@ -244,25 +158,6 @@ export default function Workspace() {
             <div style={{ ...S.outputPanel, ...(runResult.error ? S.outputError : {}) }}>
               {runResult.error ? `Error: ${runResult.error}` : runResult.output}
             </div>
-            {runResult.aspects && runResult.aspects.length > 0 && (
-              <div style={{ marginTop: 10 }}>
-                <div style={S.outputLabel}>Grading:</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
-                  {runResult.aspects.map((a, i) => (
-                    <div key={i} style={{
-                      display: 'flex', alignItems: 'center', gap: 8,
-                      padding: '6px 12px', borderRadius: 6,
-                      background: a.passed ? '#f0fff4' : '#fff5f5',
-                      border: `1px solid ${a.passed ? '#9ae6b4' : '#feb2b2'}`,
-                      fontSize: '0.85rem', color: a.passed ? '#276749' : '#c53030'
-                    }}>
-                      <span>{a.passed ? '✅' : '❌'}</span>
-                      <span>{a.label}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         )}
         {parsedHints.length > 0 && (

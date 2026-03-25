@@ -29,6 +29,9 @@ public class Submission {
     @Column(name = "blockly_state", nullable = false, columnDefinition = "TEXT")
     private String blocklyState;
 
+    @Column(name = "generated_code", columnDefinition = "TEXT")
+    private String generatedCode;
+
     @Column(name = "submitted_at")
     private LocalDateTime submittedAt;
 

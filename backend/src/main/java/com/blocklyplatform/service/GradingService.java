@@ -59,6 +59,7 @@ public class GradingService {
                 submission.setStudentName(studentName);
                 submission.setSourceFilename(filename);
                 submission.setBlocklyState(blocklyStateStr);
+                if (generatedCode != null) submission.setGeneratedCode(generatedCode);
                 submissionRepo.save(submission);
 
                 Map<String, Object> r = new HashMap<>();
@@ -198,6 +199,7 @@ public class GradingService {
         m.put("sourceFilename", s.getSourceFilename());
         m.put("versionNumber", s.getVersionNumber());
         m.put("blocklyState", s.getBlocklyState());
+        m.put("generatedCode", s.getGeneratedCode());
         m.put("submittedAt", s.getSubmittedAt());
         if (grade != null) {
             m.put("tutorScore", grade.getTutorScore());

@@ -65,16 +65,42 @@ const TOOLBOX = {
   ]
 };
 
-export default function BlocklyWorkspace({ onWorkspaceReady, initialState, readOnly = false, allowedCategories = null }) {
+// Build a filtered toolbox that only includes allowed block types.
+// Categories with no remaining blocks are removed entirely.
+// Special categories (custom: 'VARIABLE', custom: 'PROCEDURE') are always included
+// unless the caller explicitly excludes them via allowedBlocks.
+function buildFilteredToolbox(allowedBlocks) {
+  if (!allowedBlocks || allowedBlocks.length === 0) return TOOLBOX;
+
+  const filteredContents = TOOLBOX.contents
+    .map(category => {
+      // Custom categories (Variables, Functions) have no contents array — include them always
+      if (category.custom) return category;
+      const filteredItems = (category.contents || []).filter(item => allowedBlocks.includes(item.type));
+      if (filteredItems.length === 0) return null;
+      return { ...category, contents: filteredItems };
+    })
+    .filter(Boolean);
+
+  return { ...TOOLBOX, contents: filteredContents };
+}
+
+export default function BlocklyWorkspace({ onWorkspaceReady, initialState, readOnly = false, allowedCategories = null, allowedBlocks = null }) {
   const containerRef = useRef(null);
   const workspaceRef = useRef(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
 
-    const toolbox = allowedCategories && allowedCategories.length > 0
-      ? { ...TOOLBOX, contents: TOOLBOX.contents.filter(c => allowedCategories.includes(c.name)) }
-      : TOOLBOX;
+    // allowedBlocks (array of block type strings) takes precedence over allowedCategories
+    let toolbox;
+    if (allowedBlocks && allowedBlocks.length > 0) {
+      toolbox = buildFilteredToolbox(allowedBlocks);
+    } else if (allowedCategories && allowedCategories.length > 0) {
+      toolbox = { ...TOOLBOX, contents: TOOLBOX.contents.filter(c => allowedCategories.includes(c.name)) };
+    } else {
+      toolbox = TOOLBOX;
+    }
 
     const workspace = Blockly.inject(containerRef.current, {
       toolbox: readOnly ? null : toolbox,

@@ -40,12 +40,20 @@ export default function Workspace() {
   const [loading, setLoading] = useState(true);
   const [studentName, setStudentName] = useState('');
   const [runResult, setRunResult] = useState(null);
+  const [parsedHints, setParsedHints] = useState([]);
+  const [hintsRevealed, setHintsRevealed] = useState(0);
   const wsRef = useRef(null);
 
   useEffect(() => {
     apiGet(`/api/exercises/${id}`)
       .then(r => r.json())
-      .then(data => { setExercise(data); setLoading(false); })
+      .then(data => {
+        setExercise(data);
+        if (data.version?.hints) {
+          try { setParsedHints(JSON.parse(data.version.hints)); } catch { setParsedHints([]); }
+        }
+        setLoading(false);
+      })
       .catch(() => setLoading(false));
   }, [id]);
 
@@ -140,7 +148,7 @@ export default function Workspace() {
         <div style={{ flex: 1, minHeight: 0 }}>
           <BlocklyWorkspace
             onWorkspaceReady={api => { wsRef.current = api; }}
-            allowedCategories={exercise?.version?.allowedBlocks ? JSON.parse(exercise.version.allowedBlocks) : null}
+            allowedBlocks={exercise?.version?.allowedBlocks ? JSON.parse(exercise.version.allowedBlocks) : null}
           />
         </div>
         {runResult && (
@@ -149,6 +157,22 @@ export default function Workspace() {
             <div style={{ ...S.outputPanel, ...(runResult.error ? S.outputError : {}) }}>
               {runResult.error ? `Error: ${runResult.error}` : runResult.output}
             </div>
+          </div>
+        )}
+        {parsedHints.length > 0 && (
+          <div style={{ marginTop: 16 }}>
+            <button
+              onClick={() => { if (hintsRevealed < parsedHints.length) setHintsRevealed(hintsRevealed + 1); }}
+              disabled={hintsRevealed >= parsedHints.length}
+              style={{ backgroundColor: '#f6ad55', border: 'none', padding: '8px 16px', borderRadius: '4px', cursor: hintsRevealed >= parsedHints.length ? 'default' : 'pointer', fontWeight: 600, fontSize: '0.88rem' }}
+            >
+              {hintsRevealed >= parsedHints.length ? 'All hints revealed' : `Get Hint (${hintsRevealed}/${parsedHints.length})`}
+            </button>
+            {parsedHints.slice(0, hintsRevealed).map((hint, i) => (
+              <div key={i} style={{ marginTop: '8px', padding: '8px', background: '#fffbeb', border: '1px solid #f6ad55', borderRadius: '4px', fontSize: '0.88rem', color: '#4a5568' }}>
+                <strong>Hint {i + 1}:</strong> {hint}
+              </div>
+            ))}
           </div>
         )}
       </main>

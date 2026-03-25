@@ -35,6 +35,9 @@ public class ExerciseVersion {
     @Column(name = "allowed_blocks", columnDefinition = "TEXT")
     private String allowedBlocks;
 
+    @Column(name = "hints", columnDefinition = "TEXT")
+    private String hints; // JSON array: ["Hint 1","Hint 2","Hint 3"]
+
     @Column(name = "created_by")
     private String createdBy;
 

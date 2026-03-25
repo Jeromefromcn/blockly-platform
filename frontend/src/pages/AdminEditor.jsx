@@ -3,7 +3,36 @@ import { useParams, useNavigate } from 'react-router-dom';
 import BlocklyWorkspace from '../components/BlocklyWorkspace.jsx';
 import { apiGet, apiPost, apiPut } from '../api.js';
 
-const ALL_CATEGORIES = ['Logic', 'Loops', 'Math', 'Text', 'Variables', 'Functions', 'Lists'];
+const BLOCKLY_BLOCKS = [
+  { type: "controls_if", label: "If" },
+  { type: "controls_repeat_ext", label: "Repeat" },
+  { type: "controls_whileUntil", label: "While" },
+  { type: "controls_for", label: "For" },
+  { type: "controls_forEach", label: "For Each" },
+  { type: "logic_compare", label: "Compare" },
+  { type: "logic_operation", label: "And/Or" },
+  { type: "logic_negate", label: "Not" },
+  { type: "logic_boolean", label: "True/False" },
+  { type: "math_number", label: "Number" },
+  { type: "math_arithmetic", label: "Arithmetic" },
+  { type: "math_single", label: "Math Functions" },
+  { type: "math_round", label: "Round" },
+  { type: "math_modulo", label: "Modulo" },
+  { type: "text", label: "Text" },
+  { type: "text_print", label: "Print" },
+  { type: "text_length", label: "Text Length" },
+  { type: "text_join", label: "Join" },
+  { type: "lists_create_with", label: "Create List" },
+  { type: "lists_length", label: "List Length" },
+  { type: "lists_getIndex", label: "Get Item" },
+  { type: "lists_setIndex", label: "Set Item" },
+  { type: "variables_get", label: "Get Variable" },
+  { type: "variables_set", label: "Set Variable" },
+  { type: "procedures_defnoreturn", label: "Define Function" },
+  { type: "procedures_defreturn", label: "Define Function (return)" },
+  { type: "procedures_callnoreturn", label: "Call Function" },
+  { type: "procedures_callreturn", label: "Call Function (return)" },
+];
 
 const S = {
   container: { maxWidth: 1100, margin: '28px auto', padding: '0 20px' },
@@ -40,7 +69,9 @@ export default function AdminEditor() {
   const isEdit = !!id;
 
   const [form, setForm] = useState({ code: '', title: '', description: '', expectedOutput: '', createdBy: 'admin', gradingMode: 'OUTPUT_MATCH', allowedBlocks: null, category: '', difficulty: 'MEDIUM' });
-  const [selectedCategories, setSelectedCategories] = useState([...ALL_CATEGORIES]);
+  const [allowAllBlocks, setAllowAllBlocks] = useState(true);
+  const [selectedBlocks, setSelectedBlocks] = useState([]);
+  const [hints, setHints] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
@@ -61,6 +92,7 @@ export default function AdminEditor() {
       .then(r => r.json())
       .then(data => {
         const rawAllowedBlocks = data.version?.allowedBlocks || null;
+        const rawHints = data.version?.hints || null;
         setForm({
           code: data.code,
           title: data.title,
@@ -73,9 +105,21 @@ export default function AdminEditor() {
           difficulty: data.difficulty || 'MEDIUM',
         });
         if (rawAllowedBlocks) {
-          try { setSelectedCategories(JSON.parse(rawAllowedBlocks)); } catch { setSelectedCategories([...ALL_CATEGORIES]); }
+          try {
+            setSelectedBlocks(JSON.parse(rawAllowedBlocks));
+            setAllowAllBlocks(false);
+          } catch {
+            setSelectedBlocks([]);
+            setAllowAllBlocks(true);
+          }
         } else {
-          setSelectedCategories([...ALL_CATEGORIES]);
+          setSelectedBlocks([]);
+          setAllowAllBlocks(true);
+        }
+        if (rawHints) {
+          try { setHints(JSON.parse(rawHints)); } catch { setHints([]); }
+        } else {
+          setHints([]);
         }
         // Load saved blockly state for reference solution
         if (data.version?.blocklyState) {
@@ -95,14 +139,14 @@ export default function AdminEditor() {
     if (!form.expectedOutput.trim()) { alert('Expected output is required.'); return; }
 
     const blocklyState = wsRef.current ? JSON.stringify(wsRef.current.getState()) : '{}';
-    const allSelected = selectedCategories.length === ALL_CATEGORIES.length && ALL_CATEGORIES.every(c => selectedCategories.includes(c));
-    const allowedBlocks = allSelected ? null : JSON.stringify(selectedCategories);
+    const allowedBlocks = allowAllBlocks ? null : JSON.stringify(selectedBlocks);
+    const hintsPayload = hints.length > 0 ? JSON.stringify(hints) : null;
 
     setSaving(true);
     try {
       const res = isEdit
-        ? await apiPut(`/api/exercises/${id}`, { ...form, blocklyState, allowedBlocks })
-        : await apiPost('/api/exercises', { ...form, blocklyState, allowedBlocks });
+        ? await apiPut(`/api/exercises/${id}`, { ...form, blocklyState, allowedBlocks, hints: hintsPayload })
+        : await apiPost('/api/exercises', { ...form, blocklyState, allowedBlocks, hints: hintsPayload });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Save failed');
       alert('Saved successfully!');
@@ -196,24 +240,51 @@ export default function AdminEditor() {
               </>
             )}
 
-            <label style={S.label}>Allowed Blocks for Students</label>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 20px', marginBottom: 16 }}>
-              {ALL_CATEGORIES.map(cat => (
-                <label key={cat} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.88rem', color: '#4a5568', cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={selectedCategories.includes(cat)}
-                    onChange={e => {
-                      if (e.target.checked) {
-                        setSelectedCategories(prev => [...prev, cat]);
-                      } else {
-                        setSelectedCategories(prev => prev.filter(c => c !== cat));
-                      }
-                    }}
-                  />
-                  {cat}
-                </label>
+            <div style={{ marginBottom: 16 }}>
+              <h4 style={{ fontSize: '0.9rem', fontWeight: 600, color: '#2d3748', marginBottom: 8 }}>Block Palette Restrictions</h4>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.88rem', color: '#4a5568', cursor: 'pointer', marginBottom: 8 }}>
+                <input type="checkbox" checked={allowAllBlocks}
+                  onChange={e => { setAllowAllBlocks(e.target.checked); if (e.target.checked) setSelectedBlocks([]); }}
+                />
+                Allow all blocks (no restrictions)
+              </label>
+              {!allowAllBlocks && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: 8 }}>
+                  {BLOCKLY_BLOCKS.map(b => (
+                    <label key={b.type} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.85rem', color: '#4a5568', cursor: 'pointer' }}>
+                      <input type="checkbox"
+                        checked={selectedBlocks.includes(b.type)}
+                        onChange={e => {
+                          if (e.target.checked) setSelectedBlocks([...selectedBlocks, b.type]);
+                          else setSelectedBlocks(selectedBlocks.filter(t => t !== b.type));
+                        }}
+                      />
+                      {b.label}
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <h4 style={{ fontSize: '0.9rem', fontWeight: 600, color: '#2d3748', marginBottom: 8 }}>Hints</h4>
+              {hints.map((hint, i) => (
+                <div key={i} style={{ display: 'flex', gap: '8px', marginBottom: '4px' }}>
+                  <input value={hint} onChange={e => {
+                    const updated = [...hints];
+                    updated[i] = e.target.value;
+                    setHints(updated);
+                  }} style={{ ...S.input, marginBottom: 0, flex: 1 }} placeholder={`Hint ${i + 1}`} />
+                  <button onClick={() => setHints(hints.filter((_, idx) => idx !== i))}
+                    style={{ padding: '6px 12px', border: '1px solid #fc8181', background: '#fff5f5', color: '#c53030', borderRadius: 4, cursor: 'pointer' }}>
+                    Remove
+                  </button>
+                </div>
               ))}
+              <button onClick={() => setHints([...hints, ''])}
+                style={{ marginTop: 6, padding: '6px 14px', border: '1px solid #cbd5e0', background: '#f7fafc', color: '#4a5568', borderRadius: 4, cursor: 'pointer', fontSize: '0.88rem' }}>
+                + Add Hint
+              </button>
             </div>
           </div>
         </div>

@@ -446,6 +446,46 @@ docker exec blockly_db mysql -uroot -proot123 blocklydb -e "ALTER TABLE grades A
 - `OUTPUT_MATCH`: `expected_output` is a JSON array `[{"input": "add(1,2)", "expected": "3"}]`; each test case is executed with Rhino and output compared
 - `TRACE_MATCH`: `expected_output` is a JSON array `["step1", "step2"]`; compared against `__trace` array populated during execution
 
+### 2026-03-25 — Feature: Block Palette Restrictions and Hints System
+
+**Files changed:**
+- `backend/src/main/resources/db/migration/V2__Add_hints_to_exercise_versions.sql` — New migration; adds `hints TEXT DEFAULT NULL` column to `exercise_versions`
+- `backend/src/main/java/com/blocklyplatform/entity/ExerciseVersion.java` — Added `hints` field (JPA column `hints`)
+- `backend/src/main/java/com/blocklyplatform/dto/ExerciseCreateDto.java` — Added `hints` field
+- `backend/src/main/java/com/blocklyplatform/service/ExerciseService.java` — `saveVersion()` now persists `hints`; `toVersionMap()` now includes `hints` in response
+- `frontend/src/pages/AdminEditor.jsx` — Replaced category-level block checkboxes with individual block-type checkboxes (29 block types); added "Allow all blocks" toggle; added Hints editor (add/remove/edit individual hints)
+- `frontend/src/pages/Workspace.jsx` — Updated to pass `allowedBlocks` (block type array) to BlocklyWorkspace; added hints reveal panel below workspace
+- `frontend/src/components/BlocklyWorkspace.jsx` — Added `allowedBlocks` prop and `buildFilteredToolbox()` helper to filter toolbox at individual block-type level
+
+**Block Palette Restrictions:**
+- `allowed_blocks` column in `exercise_versions` stores a JSON array of Blockly block type strings: `["controls_if","math_number",...]`
+- `null` means all blocks are allowed (no restrictions)
+- Admin sets per-exercise restrictions using individual block-type checkboxes in the editor
+- Students see only the allowed blocks in their workspace toolbox
+- Categories with no remaining allowed blocks are hidden entirely
+
+**API fields (`allowed_blocks`):**
+- In `POST /api/exercises` and `PUT /api/exercises/{id}` body: `"allowedBlocks": null` (all blocks) or `"allowedBlocks": "[\"controls_if\",\"math_number\"]"` (restricted)
+- In `GET /api/exercises/{id}` response: returned under `version.allowedBlocks`
+
+**Hints System:**
+- `hints` column in `exercise_versions` stores a JSON array of strings: `["Hint 1","Hint 2","Hint 3"]`
+- `null` means no hints for this exercise
+- Admin writes hints one-by-one in the editor; hints are stored as ordered JSON array
+- Students can click "Get Hint" to reveal hints one at a time; already-revealed hints remain visible
+- Hints panel only appears when the exercise has at least one hint
+
+**API fields (`hints`):**
+- In `POST /api/exercises` and `PUT /api/exercises/{id}` body: `"hints": null` (no hints) or `"hints": "[\"Try using a loop\",\"Check the condition\"]"`
+- In `GET /api/exercises/{id}` response: returned under `version.hints`
+
+**Live migration SQL for hints column:**
+```sql
+ALTER TABLE exercise_versions ADD COLUMN hints TEXT DEFAULT NULL;
+```
+
+---
+
 ### 2026-03-22 — Frontend: Run Button, Grading Mode, Output Panel
 
 **Files changed:**

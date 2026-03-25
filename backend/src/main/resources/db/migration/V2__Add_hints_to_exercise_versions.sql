@@ -1,0 +1,1 @@
+ALTER TABLE exercise_versions ADD COLUMN hints TEXT DEFAULT NULL;

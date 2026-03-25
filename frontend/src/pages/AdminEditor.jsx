@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import BlocklyWorkspace from '../components/BlocklyWorkspace.jsx';
 import { apiGet, apiPost, apiPut } from '../api.js';
+import { useToast } from '../components/Toast.jsx';
 
 const BLOCKLY_CATEGORIES = [
   { category: "Logic", blocks: [
@@ -50,7 +51,7 @@ const BLOCKLY_CATEGORIES = [
 
 const S = {
   container: { maxWidth: 1100, margin: '28px auto', padding: '0 20px' },
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, position: 'sticky', top: 0, zIndex: 10, background: '#f7fafc', padding: '12px 0', borderBottom: '1px solid #e2e8f0' },
   h1: { fontSize: '1.3rem', fontWeight: 700, color: '#2d3748' },
   card: { background: '#fff', borderRadius: 10, padding: 24, boxShadow: '0 1px 4px rgba(0,0,0,0.08)', marginBottom: 20 },
   label: { display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#718096', marginBottom: 5 },
@@ -79,6 +80,7 @@ function runCode(code) {
 }
 
 export default function AdminEditor() {
+  const toast = useToast();
   const { id } = useParams();
   const navigate = useNavigate();
   const isEdit = !!id;
@@ -166,9 +168,9 @@ export default function AdminEditor() {
   }, [id]);
 
   const handleSave = async () => {
-    if (!form.title.trim() || !form.code.trim()) { alert('Code and title are required.'); return; }
-    if (!form.description.trim()) { alert('Description is required.'); return; }
-    if (!form.expectedOutput.trim()) { alert('Expected output is required.'); return; }
+    if (!form.title.trim() || !form.code.trim()) { toast('Code and title are required.', 'warning'); return; }
+    if (!form.description.trim()) { toast('Description is required.', 'warning'); return; }
+    if (!form.expectedOutput.trim()) { toast('Expected output is required.', 'warning'); return; }
 
     const blocklyState = wsRef.current ? JSON.stringify(wsRef.current.getState()) : '{}';
     const allowedBlocks = allowAllBlocks ? null : JSON.stringify(selectedBlocks);
@@ -182,10 +184,10 @@ export default function AdminEditor() {
         : await apiPost('/api/exercises', { ...form, blocklyState, allowedBlocks, hints: hintsPayload, gradingMode });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Save failed');
-      alert('Saved successfully!');
+      toast('Saved successfully!', 'success');
       navigate('/admin');
     } catch (e) {
-      alert(e.message);
+      toast(e.message || 'An error occurred', 'error');
     } finally {
       setSaving(false);
     }
@@ -326,7 +328,7 @@ export default function AdminEditor() {
                 <button
                   onClick={() => {
                     if (addAspectType === 'OUTPUT_MATCH' && aspects.some(a => a.type === 'OUTPUT_MATCH')) {
-                      alert('OUTPUT_MATCH can only be added once.');
+                      toast('OUTPUT_MATCH can only be added once.', 'warning');
                       return;
                     }
                     const newAspect = addAspectType === 'MAX_BLOCKS'

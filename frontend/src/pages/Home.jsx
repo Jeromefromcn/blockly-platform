@@ -4,24 +4,33 @@ import { apiGet, apiPost } from '../api.js';
 
 const S = {
   container: { maxWidth: 800, margin: '40px auto', padding: '0 20px' },
-  h1: { fontSize: '1.6rem', color: '#2d3748', marginBottom: 8 },
-  sub: { color: '#718096', marginBottom: 28, fontSize: '0.95rem' },
+  h1: { fontSize: '1.8rem', fontWeight: 800, color: '#1a202c', marginBottom: 4 },
+  sub: { color: '#718096', marginBottom: 28, fontSize: '0.92rem' },
   card: {
-    background: '#fff', borderRadius: 10, padding: '20px 24px',
-    marginBottom: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
-    border: '1px solid #e2e8f0', cursor: 'pointer', transition: 'box-shadow 0.2s'
+    background: '#fff',
+    borderRadius: 12,
+    padding: '18px 20px',
+    marginBottom: 12,
+    boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
+    border: '1px solid #edf2f7',
+    cursor: 'pointer',
+    transition: 'box-shadow 0.15s, transform 0.15s',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 16,
   },
-  cardRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-  title: { fontSize: '1.05rem', fontWeight: 600, color: '#2d3748' },
+  cardRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', flex: 1 },
+  title: { fontSize: '1rem', fontWeight: 700, color: '#1a202c', marginBottom: 4 },
   badge: {
     display: 'inline-block', padding: '2px 10px', borderRadius: 12,
-    background: '#c6f6d5', color: '#276749', fontSize: '0.78rem', fontWeight: 600
+    background: '#c6f6d5', color: '#22543d', fontSize: '0.78rem', fontWeight: 600
   },
   likeBtn: {
-    display: 'flex', alignItems: 'center', gap: 6,
-    padding: '5px 14px', border: '1px solid #e2e8f0',
+    display: 'flex', alignItems: 'center', gap: 5,
+    padding: '6px 14px', border: '1px solid #e2e8f0',
     borderRadius: 20, background: '#fff', cursor: 'pointer',
-    fontSize: '0.85rem', color: '#718096', transition: 'all 0.15s'
+    fontSize: '0.82rem', color: '#718096',
+    transition: 'all 0.15s', whiteSpace: 'nowrap', flexShrink: 0,
   },
   empty: { textAlign: 'center', color: '#a0aec0', padding: '60px 0', fontSize: '1rem' },
 };
@@ -97,7 +106,7 @@ export default function Home() {
   return (
     <div style={S.container}>
       <h1 style={S.h1}>Exercises</h1>
-      <p style={S.sub}>Choose an exercise and build your solution with blocks!</p>
+      <p style={S.sub}>Pick an exercise and solve it with blocks</p>
 
       <div style={{ marginBottom: '20px', display: 'flex', gap: '20px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
         <div>
@@ -135,25 +144,45 @@ export default function Home() {
       </div>
 
       {exercises.length === 0
-        ? <div style={S.empty}>No exercises available yet.</div>
+        ? (
+          <div style={{ textAlign: 'center', padding: '80px 20px', color: '#a0aec0' }}>
+            <div style={{ fontSize: '3rem', marginBottom: 12 }}>📭</div>
+            <div style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 4, color: '#718096' }}>No exercises yet</div>
+            <div style={{ fontSize: '0.85rem' }}>Check back later or ask your tutor to publish some exercises.</div>
+          </div>
+        )
         : exercises.map(ex => (
           <div key={ex.id} style={S.card}
-            onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.12)'}
-            onMouseLeave={e => e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.08)'}
+            onMouseEnter={e => {
+              e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.1), 0 2px 6px rgba(0,0,0,0.06)';
+              e.currentTarget.style.transform = 'translateY(-1px)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)';
+              e.currentTarget.style.transform = 'translateY(0)';
+            }}
             onClick={() => navigate(`/exercise/${ex.id}`)}>
+            <div style={{
+              width: 4, borderRadius: 4, alignSelf: 'stretch', flexShrink: 0,
+              background: ex.difficulty === 'EASY' ? '#48bb78' : ex.difficulty === 'HARD' ? '#fc8181' : '#f6ad55'
+            }} />
             <div style={S.cardRow}>
               <div style={{ flex: 1 }}>
                 <div style={S.title}>{ex.title}</div>
-                <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <div style={{ marginTop: 6, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                   {ex.category && (
-                    <span style={{ display: 'inline-block', padding: '4px 10px', backgroundColor: '#e0e0e0', borderRadius: 4, fontSize: '0.82rem', fontWeight: 500, color: '#2d3748' }}>
+                    <span style={{ display: 'inline-block', padding: '3px 9px', backgroundColor: '#edf2f7', borderRadius: 20, fontSize: '0.78rem', fontWeight: 500, color: '#4a5568' }}>
                       {ex.category}
                     </span>
                   )}
-                  <span style={{ display: 'inline-block', padding: '4px 10px', backgroundColor: ex.difficulty === 'EASY' ? '#90EE90' : ex.difficulty === 'MEDIUM' ? '#FFD700' : '#FF6B6B', borderRadius: 4, fontSize: '0.82rem', fontWeight: 500, color: ex.difficulty === 'MEDIUM' ? '#000' : '#fff' }}>
+                  <span style={{
+                    display: 'inline-block', padding: '3px 9px', borderRadius: 20, fontSize: '0.78rem', fontWeight: 600,
+                    background: ex.difficulty === 'EASY' ? '#c6f6d5' : ex.difficulty === 'HARD' ? '#fed7d7' : '#fefcbf',
+                    color: ex.difficulty === 'EASY' ? '#22543d' : ex.difficulty === 'HARD' ? '#822727' : '#744210',
+                  }}>
                     {ex.difficulty || 'MEDIUM'}
                   </span>
-                  <span style={{ fontSize: '0.8rem', color: '#a0aec0' }}>v{ex.currentVersionNumber}</span>
+                  <span style={{ fontSize: '0.78rem', color: '#a0aec0' }}>v{ex.currentVersionNumber}</span>
                 </div>
               </div>
               <button

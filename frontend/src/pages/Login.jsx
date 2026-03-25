@@ -8,21 +8,22 @@ const S = {
     justifyContent: 'center', background: '#f7fafc'
   },
   card: {
-    background: '#fff', borderRadius: 12, padding: '40px 36px',
-    boxShadow: '0 4px 24px rgba(0,0,0,0.1)', width: '100%', maxWidth: 400
+    background: '#fff', borderRadius: 16, padding: '40px 36px', width: 380,
+    boxShadow: '0 4px 24px rgba(0,0,0,0.08)', border: '1px solid #edf2f7'
   },
-  title: { fontSize: '1.5rem', fontWeight: 700, color: '#2d3748', marginBottom: 8, textAlign: 'center' },
-  sub: { color: '#718096', fontSize: '0.9rem', marginBottom: 28, textAlign: 'center' },
+  title: { fontSize: '1.5rem', fontWeight: 800, color: '#1a202c', marginBottom: 6, textAlign: 'center', letterSpacing: '-0.02em' },
+  sub: { color: '#718096', fontSize: '0.88rem', marginBottom: 28, textAlign: 'center' },
   label: { display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#718096', marginBottom: 5 },
   input: {
-    width: '100%', padding: '10px 12px', border: '1px solid #cbd5e0',
-    borderRadius: 6, fontSize: '0.95rem', outline: 'none', marginBottom: 18,
-    boxSizing: 'border-box'
+    width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0',
+    borderRadius: 8, fontSize: '0.95rem', outline: 'none', marginBottom: 16,
+    boxSizing: 'border-box', transition: 'border-color 0.15s',
   },
   btn: {
-    width: '100%', padding: '11px', border: 'none', borderRadius: 6,
+    width: '100%', padding: '11px', border: 'none', borderRadius: 8,
     cursor: 'pointer', fontWeight: 700, fontSize: '1rem',
-    background: '#2b6cb0', color: '#fff', marginTop: 4
+    background: 'linear-gradient(135deg, #3182ce, #2b6cb0)', color: '#fff', marginTop: 4,
+    boxShadow: '0 2px 6px rgba(49,130,206,0.35)', transition: 'opacity 0.15s',
   },
   error: {
     background: '#fff5f5', border: '1px solid #feb2b2', color: '#c53030',

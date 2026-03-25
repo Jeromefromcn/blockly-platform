@@ -2,20 +2,37 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import BlocklyWorkspace from '../components/BlocklyWorkspace.jsx';
 import { apiGet } from '../api.js';
+import { useToast } from '../components/Toast.jsx';
 
 const S = {
   layout: { display: 'flex', height: 'calc(100vh - 50px)' },
-  sidebar: { width: 320, background: '#fff', borderRight: '1px solid #e2e8f0', padding: 24, overflowY: 'auto', flexShrink: 0 },
+  sidebar: {
+    width: 300, background: '#fff',
+    borderRight: '1px solid #edf2f7',
+    padding: '24px 20px',
+    overflowY: 'auto', flexShrink: 0,
+    display: 'flex', flexDirection: 'column', gap: 0,
+  },
   main: { flex: 1, padding: 20, display: 'flex', flexDirection: 'column' },
-  title: { fontSize: '1.2rem', fontWeight: 700, color: '#2d3748', marginBottom: 8 },
+  title: { fontSize: '1.1rem', fontWeight: 700, color: '#1a202c', marginBottom: 6, lineHeight: 1.4 },
   desc: { fontSize: '0.9rem', color: '#4a5568', lineHeight: 1.7, whiteSpace: 'pre-wrap', marginBottom: 20 },
   divider: { margin: '16px 0', borderColor: '#e2e8f0' },
   label: { display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#718096', marginBottom: 6 },
   input: { width: '100%', padding: '8px 12px', border: '1px solid #cbd5e0', borderRadius: 6, fontSize: '0.9rem', outline: 'none', marginBottom: 12 },
-  btn: { width: '100%', padding: '10px', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem', marginBottom: 8 },
+  btn: {
+    width: '100%', padding: '10px 14px', border: 'none', borderRadius: 8,
+    cursor: 'pointer', fontWeight: 600, fontSize: '0.88rem', marginBottom: 8,
+    transition: 'opacity 0.15s',
+  },
   hint: { fontSize: '0.78rem', color: '#a0aec0', textAlign: 'center', marginTop: 4 },
   toolbar: { display: 'flex', gap: 8, marginBottom: 10, alignItems: 'center' },
-  runBtn: { padding: '7px 20px', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: '0.88rem', background: '#38a169', color: '#fff' },
+  runBtn: {
+    padding: '8px 24px', border: 'none', borderRadius: 8,
+    cursor: 'pointer', fontWeight: 700, fontSize: '0.9rem',
+    background: 'linear-gradient(135deg, #38a169, #2f855a)', color: '#fff',
+    boxShadow: '0 2px 4px rgba(56,161,105,0.3)',
+    transition: 'transform 0.1s, box-shadow 0.1s',
+  },
   outputPanel: { background: '#1a202c', color: '#e2e8f0', borderRadius: 6, padding: '10px 14px', fontFamily: 'monospace', fontSize: '0.83rem', minHeight: 64, marginTop: 10, whiteSpace: 'pre-wrap', wordBreak: 'break-all' },
   outputError: { color: '#fc8181' },
   outputLabel: { fontSize: '0.78rem', fontWeight: 600, color: '#718096', marginBottom: 2 },
@@ -36,6 +53,7 @@ function runCode(code) {
 }
 
 export default function Workspace() {
+  const toast = useToast();
   const { id } = useParams();
   const [exercise, setExercise] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -62,7 +80,7 @@ export default function Workspace() {
   const handleExport = () => {
     if (!wsRef.current) return;
     const name = studentName.trim();
-    if (!name) { alert('Please enter your name before exporting.'); return; }
+    if (!name) { toast('Please enter your name before exporting.', 'warning'); return; }
 
     const state = wsRef.current.getState();
     const code = wsRef.current.getCode();
@@ -103,7 +121,7 @@ export default function Workspace() {
           wsRef.current.loadState(data.blocklyState);
         }
       } catch {
-        alert('Invalid JSON file.');
+        toast('Invalid JSON file.', 'error');
       }
     };
     reader.readAsText(file);
@@ -117,6 +135,16 @@ export default function Workspace() {
     <div style={S.layout}>
       <aside style={S.sidebar}>
         <div style={S.title}>{exercise.title}</div>
+        {exercise.difficulty && (
+          <span style={{
+            display: 'inline-block', marginBottom: 10, padding: '3px 10px', borderRadius: 20,
+            fontSize: '0.73rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase',
+            background: exercise.difficulty === 'EASY' ? '#c6f6d5' : exercise.difficulty === 'HARD' ? '#fed7d7' : '#fefcbf',
+            color: exercise.difficulty === 'EASY' ? '#22543d' : exercise.difficulty === 'HARD' ? '#822727' : '#744210',
+          }}>
+            {exercise.difficulty}
+          </span>
+        )}
         <div style={S.desc}>{exercise.version?.description || 'No description.'}</div>
 
         <hr style={S.divider} />

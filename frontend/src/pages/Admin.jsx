@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiDelete, apiGet, apiPatch, apiPost } from '../api.js';
+import { useToast } from '../components/Toast.jsx';
 
 const S = {
   container: { maxWidth: 1100, margin: '32px auto', padding: '0 20px' },
@@ -123,6 +124,7 @@ function gradeAspects(aspects, generatedCode, expectedOutput, blocklyState) {
 }
 
 export default function Admin() {
+  const toast = useToast();
   const [tab, setTab] = useState('exercises');
   const [exercises, setExercises] = useState([]);
   const [submissions, setSubmissions] = useState([]);
@@ -162,7 +164,7 @@ export default function Admin() {
       setImportResults(data);
       loadSubmissions();
     } catch (err) {
-      alert('Import failed: ' + err.message);
+      toast('Import failed: ' + err.message, 'error');
     }
     e.target.value = '';
   };
@@ -194,7 +196,7 @@ export default function Admin() {
 
   const submitGrade = async () => {
     const score = parseInt(gradeForm.score);
-    if (isNaN(score) || score < 0 || score > 100) { alert('Score must be 0–100'); return; }
+    if (isNaN(score) || score < 0 || score > 100) { toast('Score must be 0–100', 'warning'); return; }
     await apiPatch(`/api/submissions/${grading.submissionId}/grade`,
       { tutorScore: score, tutorComment: gradeForm.comment }
     );
@@ -213,6 +215,28 @@ export default function Admin() {
             onClick={() => navigate('/admin/exercise/new')}>+ New Exercise</button>
         )}
       </div>
+
+      {(() => {
+        const stats = [
+          { label: 'Total Exercises', value: exercises.length, color: '#2b6cb0', bg: '#ebf8ff' },
+          { label: 'Published', value: exercises.filter(e => e.status === 'PUBLISHED').length, color: '#276749', bg: '#f0fff4' },
+          { label: 'Submissions', value: submissions.length, color: '#744210', bg: '#fffbeb' },
+          { label: 'Ungraded', value: submissions.filter(s => s.tutorScore == null).length, color: '#c53030', bg: '#fff5f5' },
+        ];
+        return (
+          <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
+            {stats.map(s => (
+              <div key={s.label} style={{
+                flex: '1 1 160px', background: s.bg, border: `1px solid ${s.color}22`,
+                borderRadius: 10, padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 4
+              }}>
+                <div style={{ fontSize: '1.8rem', fontWeight: 800, color: s.color }}>{s.value}</div>
+                <div style={{ fontSize: '0.78rem', color: '#718096', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
 
       <div style={S.tabs}>
         {[['exercises', 'Exercises'], ['submissions', 'Submissions'], ['import', 'Import & Grade']].map(([key, label]) => (

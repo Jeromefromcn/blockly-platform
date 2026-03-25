@@ -83,7 +83,9 @@ export default function AdminEditor() {
   const navigate = useNavigate();
   const isEdit = !!id;
 
-  const [form, setForm] = useState({ code: '', title: '', description: '', expectedOutput: '', createdBy: 'admin', gradingMode: 'OUTPUT_MATCH', allowedBlocks: null, category: '', difficulty: 'MEDIUM' });
+  const [form, setForm] = useState({ code: '', title: '', description: '', expectedOutput: '', createdBy: 'admin', allowedBlocks: null, category: '', difficulty: 'MEDIUM' });
+  const [aspects, setAspects] = useState([{ type: 'OUTPUT_MATCH' }]);
+  const [addAspectType, setAddAspectType] = useState('OUTPUT_MATCH');
   const [allowAllBlocks, setAllowAllBlocks] = useState(true);
   const [selectedBlocks, setSelectedBlocks] = useState([]);
   const [hints, setHints] = useState([]);
@@ -114,11 +116,26 @@ export default function AdminEditor() {
           description: data.version?.description || '',
           expectedOutput: data.version?.expectedOutput || '',
           createdBy: data.version?.createdBy || 'admin',
-          gradingMode: data.version?.gradingMode || 'OUTPUT_MATCH',
           allowedBlocks: rawAllowedBlocks,
           category: data.category || '',
           difficulty: data.difficulty || 'MEDIUM',
         });
+        // Parse gradingMode as aspects array (with backward compat)
+        const rawGradingMode = data.version?.gradingMode;
+        if (rawGradingMode) {
+          try {
+            const parsed = JSON.parse(rawGradingMode);
+            if (Array.isArray(parsed)) {
+              setAspects(parsed);
+            } else {
+              setAspects([{ type: 'OUTPUT_MATCH' }]);
+            }
+          } catch {
+            setAspects([{ type: 'OUTPUT_MATCH' }]);
+          }
+        } else {
+          setAspects([{ type: 'OUTPUT_MATCH' }]);
+        }
         if (rawAllowedBlocks) {
           try {
             setSelectedBlocks(JSON.parse(rawAllowedBlocks));
@@ -156,12 +173,13 @@ export default function AdminEditor() {
     const blocklyState = wsRef.current ? JSON.stringify(wsRef.current.getState()) : '{}';
     const allowedBlocks = allowAllBlocks ? null : JSON.stringify(selectedBlocks);
     const hintsPayload = hints.length > 0 ? JSON.stringify(hints) : null;
+    const gradingMode = JSON.stringify(aspects);
 
     setSaving(true);
     try {
       const res = isEdit
-        ? await apiPut(`/api/exercises/${id}`, { ...form, blocklyState, allowedBlocks, hints: hintsPayload })
-        : await apiPost('/api/exercises', { ...form, blocklyState, allowedBlocks, hints: hintsPayload });
+        ? await apiPut(`/api/exercises/${id}`, { ...form, blocklyState, allowedBlocks, hints: hintsPayload, gradingMode })
+        : await apiPost('/api/exercises', { ...form, blocklyState, allowedBlocks, hints: hintsPayload, gradingMode });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Save failed');
       alert('Saved successfully!');
@@ -231,27 +249,105 @@ export default function AdminEditor() {
               <option value="HARD">Hard</option>
             </select>
 
-            <label style={S.label}>Grading Mode</label>
-            <select style={S.select} value={form.gradingMode} onChange={set('gradingMode')}>
-              <option value="OUTPUT_MATCH">OUTPUT_MATCH</option>
-              <option value="TRACE_MATCH">TRACE_MATCH</option>
-            </select>
+            <label style={S.label}>Grading Aspects</label>
+            <div style={{ marginBottom: 16 }}>
+              {/* Aspects list */}
+              {aspects.map((aspect, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 8, padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, background: '#f7fafc' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#2d3748', marginBottom: 6 }}>{aspect.type}</div>
+                    {(aspect.type === 'REQUIRED_BLOCKS' || aspect.type === 'FORBIDDEN_BLOCKS') && (
+                      <div>
+                        <div style={{ fontSize: '0.78rem', color: '#718096', marginBottom: 4 }}>Select block types:</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          {BLOCKLY_CATEGORIES.map(cat => (
+                            <div key={cat.category}>
+                              <div style={{ fontSize: '0.78rem', fontWeight: 600, color: '#4a5568', marginBottom: 3 }}>{cat.category}</div>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', paddingLeft: 8 }}>
+                                {cat.blocks.map(b => (
+                                  <label key={b.type} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.78rem', color: '#4a5568', cursor: 'pointer' }}>
+                                    <input type="checkbox"
+                                      checked={(aspect.blocks || []).includes(b.type)}
+                                      onChange={e => {
+                                        const updated = [...aspects];
+                                        const current = updated[i].blocks || [];
+                                        updated[i] = {
+                                          ...updated[i],
+                                          blocks: e.target.checked
+                                            ? [...current, b.type]
+                                            : current.filter(t => t !== b.type)
+                                        };
+                                        setAspects(updated);
+                                      }}
+                                    />
+                                    {b.label}
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {aspect.type === 'MAX_BLOCKS' && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <label style={{ fontSize: '0.82rem', color: '#4a5568' }}>Max blocks:</label>
+                        <input type="number" min={1}
+                          value={aspect.max ?? 10}
+                          onChange={e => {
+                            const updated = [...aspects];
+                            updated[i] = { ...updated[i], max: parseInt(e.target.value) || 10 };
+                            setAspects(updated);
+                          }}
+                          style={{ width: 80, padding: '4px 8px', border: '1px solid #cbd5e0', borderRadius: 4, fontSize: '0.88rem' }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => setAspects(aspects.filter((_, idx) => idx !== i))}
+                    style={{ padding: '4px 10px', border: '1px solid #fc8181', background: '#fff5f5', color: '#c53030', borderRadius: 4, cursor: 'pointer', fontSize: '0.82rem', flexShrink: 0 }}>
+                    ✕
+                  </button>
+                </div>
+              ))}
 
-            {form.gradingMode === 'OUTPUT_MATCH' && (
+              {/* Add aspect row */}
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
+                <select
+                  value={addAspectType}
+                  onChange={e => setAddAspectType(e.target.value)}
+                  style={{ ...S.select, marginBottom: 0, flex: 1 }}>
+                  <option value="OUTPUT_MATCH">OUTPUT_MATCH</option>
+                  <option value="REQUIRED_BLOCKS">REQUIRED_BLOCKS</option>
+                  <option value="FORBIDDEN_BLOCKS">FORBIDDEN_BLOCKS</option>
+                  <option value="MAX_BLOCKS">MAX_BLOCKS</option>
+                </select>
+                <button
+                  onClick={() => {
+                    if (addAspectType === 'OUTPUT_MATCH' && aspects.some(a => a.type === 'OUTPUT_MATCH')) {
+                      alert('OUTPUT_MATCH can only be added once.');
+                      return;
+                    }
+                    const newAspect = addAspectType === 'MAX_BLOCKS'
+                      ? { type: addAspectType, max: 10 }
+                      : (addAspectType === 'REQUIRED_BLOCKS' || addAspectType === 'FORBIDDEN_BLOCKS')
+                        ? { type: addAspectType, blocks: [] }
+                        : { type: addAspectType };
+                    setAspects([...aspects, newAspect]);
+                  }}
+                  style={{ padding: '9px 16px', border: '1px solid #cbd5e0', background: '#edf2f7', color: '#2d3748', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: '0.88rem', whiteSpace: 'nowrap' }}>
+                  + Add
+                </button>
+              </div>
+            </div>
+
+            {aspects.some(a => a.type === 'OUTPUT_MATCH') && (
               <>
-                <label style={S.label}>Test Cases (JSON array)</label>
+                <label style={S.label}>Expected Output</label>
                 <textarea style={{ ...S.textarea, background: '#f7fafc' }} rows={4}
                   value={form.expectedOutput} onChange={set('expectedOutput')}
-                  placeholder={'[{"input": "add(1, 2)", "expected": "3"}]'} />
-              </>
-            )}
-
-            {form.gradingMode === 'TRACE_MATCH' && (
-              <>
-                <label style={S.label}>Expected Trace (JSON array)</label>
-                <textarea style={{ ...S.textarea, background: '#f7fafc' }} rows={4}
-                  value={form.expectedOutput} onChange={set('expectedOutput')}
-                  placeholder={'["step1", "loop", "end"]'} />
+                  placeholder="Enter the expected output that the student's program should produce" />
               </>
             )}
 

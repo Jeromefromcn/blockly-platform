@@ -140,25 +140,27 @@ export default function Workspace() {
           onClick={() => { wsRef.current?.clear(); setRunResult(null); }}>
           Clear Workspace
         </button>
+
+        {runResult && (
+          <div style={{ marginTop: 16 }}>
+            <hr style={S.divider} />
+            <div style={S.outputLabel}>Output:</div>
+            <div style={{ ...S.outputPanel, maxHeight: 160, overflowY: 'auto', ...(runResult.error ? S.outputError : {}) }}>
+              {runResult.error ? `Error: ${runResult.error}` : runResult.output}
+            </div>
+          </div>
+        )}
       </aside>
 
       <main style={S.main}>
         <div style={S.toolbar}>
           <button style={S.runBtn} onClick={handleRun}>Run</button>
         </div>
-        <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+        <div style={{ flex: 1, minHeight: 0 }}>
           <BlocklyWorkspace
             onWorkspaceReady={api => { wsRef.current = api; }}
             allowedBlocks={exercise?.version?.allowedBlocks ? JSON.parse(exercise.version.allowedBlocks) : null}
           />
-          {runResult && (
-            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '8px 10px', background: 'rgba(26,32,44,0.96)', borderTop: '1px solid #4a5568', borderRadius: '0 0 8px 8px' }}>
-              <div style={{ ...S.outputLabel, color: '#a0aec0', marginBottom: 3 }}>Output:</div>
-              <div style={{ ...S.outputPanel, marginTop: 0, minHeight: 40, maxHeight: 120, overflowY: 'auto', ...(runResult.error ? S.outputError : {}) }}>
-                {runResult.error ? `Error: ${runResult.error}` : runResult.output}
-              </div>
-            </div>
-          )}
         </div>
         {parsedHints.length > 0 && (
           <div style={{ marginTop: 16 }}>

@@ -125,3 +125,12 @@ A chronological record of bugs and issues encountered in this project, including
 - **Files Changed**: `frontend/src/pages/AdminEditor.jsx`, `frontend/src/pages/Workspace.jsx`
 
 ---
+
+### [2026-03-25] 500 on save exercise — grading_mode column too small
+
+- **Symptom**: PUT /api/exercises/{id} returned 500 with `Data truncation: Data too long for column 'grading_mode'`
+- **Root Cause**: `grading_mode` column in `exercise_versions` was `VARCHAR(20)` — designed for a short string like `"OUTPUT_MATCH"`. After the Grading Aspect feature, it now stores a JSON array which easily exceeds 20 chars
+- **Fix**: Added Flyway migration `V3__Widen_grading_mode_to_text.sql`: `ALTER TABLE exercise_versions MODIFY COLUMN grading_mode TEXT NOT NULL`
+- **Files Changed**: `backend/src/main/resources/db/migration/V3__Widen_grading_mode_to_text.sql`
+
+---

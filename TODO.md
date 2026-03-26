@@ -10,6 +10,7 @@
 | 9 | Bulk Grading UI | Admin side-by-side or batch review view to grade multiple submissions efficiently | 2026-03-24 |
 | 10 | Learning Analytics | Show pass rates, average scores, score distributions per exercise in the admin panel | 2026-03-24 |
 | 11 | Blockly Preview in Grading | In the Grade Submission modal, render the student's Blockly workspace (read-only) so the tutor can visually inspect the blocks while grading | 2026-03-26 |
+| 12 | Export Grading Results | Allow tutors to export grading results (scores, comments, pass/fail per criterion) as a file (e.g. CSV or Excel) from the admin panel | 2026-03-26 |
 
 ---
 

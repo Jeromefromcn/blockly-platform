@@ -51,6 +51,14 @@ function NavBar() {
               Admin
             </a>
           )}
+          {/* Show User Management link for SUPER_ADMIN only */}
+          {user.role === 'SUPER_ADMIN' && (
+            <a href="/super-admin" style={{ padding: '6px 12px', borderRadius: 8, fontSize: '0.88rem', fontWeight: 500, color: '#4a5568', transition: 'background 0.15s' }}
+              onMouseEnter={e => e.currentTarget.style.background = '#f1f5f9'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+              User Management
+            </a>
+          )}
         </nav>
       )}
 

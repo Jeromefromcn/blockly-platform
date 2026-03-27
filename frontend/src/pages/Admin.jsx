@@ -168,15 +168,24 @@ export default function Admin() {
   const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [importResults, setImportResults] = useState(null);
-  const [grading, setGrading] = useState(null); // { submissionId, sourceFilename, autoScore, aspectResults, blocklyState, previewOpen }
 
+  // Two-panel grading state
+  const [selectedSubmission, setSelectedSubmission] = useState(null); // the selected submission object
+  const [gradingState, setGradingState] = useState(null); // { submissionId, sourceFilename, autoScore, aspectResults, blocklyState, previewOpen }
   const [gradeForm, setGradeForm] = useState({ score: '', comment: '' });
+  const [savingGrade, setSavingGrade] = useState(false);
+  const [showMobilePanel, setShowMobilePanel] = useState('list'); // 'list' or 'form'
+
+  // Submission filters
+  const [filterExercise, setFilterExercise] = useState('');
+  const [filterStatus, setFilterStatus] = useState('All'); // 'All' | 'Ungraded' | 'Graded'
+
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
   const [exercisesPage, setExercisesPage] = useState(1);
   const [exercisesPerPage, setExercisesPerPage] = useState(10);
   const [submissionsPage, setSubmissionsPage] = useState(1);
-  const [submissionsPerPage, setSubmissionsPerPage] = useState(10);
+  const [submissionsPerPage, setSubmissionsPerPage] = useState(25);
 
   const loadExercises = () => apiGet('/api/exercises').then(r => r.json()).then(setExercises);
   const loadSubmissions = () => apiGet('/api/submissions').then(r => r.json()).then(setSubmissions);
@@ -212,9 +221,12 @@ export default function Admin() {
     e.target.value = '';
   };
 
+  // Open a submission in the right panel
   const openGrade = async (sub) => {
-    setGrading({ submissionId: sub.id, sourceFilename: sub.sourceFilename, autoScore: sub.autoScore ?? null, aspectResults: null, blocklyState: null, previewOpen: false });
+    setSelectedSubmission(sub);
+    setGradingState({ submissionId: sub.id, sourceFilename: sub.sourceFilename, autoScore: sub.autoScore ?? null, aspectResults: null, blocklyState: null, previewOpen: false });
     setGradeForm({ score: sub.tutorScore ?? '', comment: sub.tutorComment ?? '' });
+    setShowMobilePanel('form');
 
     try {
       const [detailRes, exerciseRes] = await Promise.all([
@@ -233,7 +245,7 @@ export default function Admin() {
         aspectResults = gradeAspects(aspects, detail.generatedCode, expectedOutput, detail.blocklyState);
       }
 
-      setGrading(prev => prev ? {
+      setGradingState(prev => prev ? {
         ...prev,
         aspectResults,
         blocklyState: detail.blocklyState ?? null,
@@ -241,15 +253,63 @@ export default function Admin() {
     } catch {}
   };
 
-  const submitGrade = async () => {
+  // Save grade and auto-advance to next ungraded submission
+  const saveGrade = async () => {
     const score = parseInt(gradeForm.score);
     if (isNaN(score) || score < 0 || score > 100) { toast('Score must be 0–100', 'warning'); return; }
-    await apiPatch(`/api/submissions/${grading.submissionId}/grade`,
-      { tutorScore: score, tutorComment: gradeForm.comment }
-    );
-    setGrading(null);
-    loadSubmissions();
+    setSavingGrade(true);
+    try {
+      await apiPatch(`/api/submissions/${gradingState.submissionId}/grade`,
+        { tutorScore: score, tutorComment: gradeForm.comment }
+      );
+      toast('Grade saved', 'success');
+
+      // Reload submissions, then auto-advance to next ungraded
+      const res = await apiGet('/api/submissions');
+      const updated = await res.json();
+      setSubmissions(updated);
+
+      // Find next ungraded submission in the filtered list (after the current one)
+      const filtered = applyFilters(updated);
+      const currentIndex = filtered.findIndex(s => s.id === gradingState.submissionId);
+      const nextUngraded = filtered.slice(currentIndex + 1).find(s => s.tutorScore == null)
+        || filtered.slice(0, currentIndex).find(s => s.tutorScore == null);
+
+      if (nextUngraded) {
+        openGrade(nextUngraded);
+      } else {
+        setSelectedSubmission(null);
+        setGradingState(null);
+        setGradeForm({ score: '', comment: '' });
+        setShowMobilePanel('list');
+        toast('All submissions graded!', 'success');
+      }
+    } finally {
+      setSavingGrade(false);
+    }
   };
+
+  // Apply exercise and status filters to a submissions array
+  const applyFilters = (subs) => {
+    let result = subs;
+    if (filterExercise) result = result.filter(s => String(s.exerciseId) === filterExercise);
+    if (filterStatus === 'Ungraded') result = result.filter(s => s.tutorScore == null);
+    if (filterStatus === 'Graded') result = result.filter(s => s.tutorScore != null);
+    return result;
+  };
+
+  const filteredSubmissions = applyFilters(submissions);
+
+  // Paginated slice of filtered submissions
+  const pagedSubmissions = filteredSubmissions.slice(
+    (submissionsPage - 1) * submissionsPerPage,
+    submissionsPage * submissionsPerPage
+  );
+
+  // Get unique exercises from submissions for the filter dropdown
+  const exerciseOptions = Array.from(
+    new Map(submissions.map(s => [s.exerciseId, s.exerciseTitle])).entries()
+  );
 
   if (loading) return <div style={{ padding: 40, fontFamily: 'Inter, sans-serif' }}>Loading...</div>;
 
@@ -370,44 +430,262 @@ export default function Admin() {
           </div>
         )}
 
-        {/* Submissions Tab */}
+        {/* Submissions Tab — Two-Panel Bulk Grading UI */}
         {tab === 'submissions' && (
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#111827', margin: 0 }}>Submissions</h2>
-            </div>
-            {submissions.length === 0
-              ? <div style={{ textAlign: 'center', padding: '60px 0', color: '#9ca3af' }}>
-                  <div style={{ fontSize: '2.5rem', marginBottom: 8 }}>📭</div>
-                  <div style={{ fontWeight: 600 }}>No submissions yet</div>
+          <div style={{ display: 'flex', gap: 0, height: 'calc(100vh - 220px)', minHeight: 500 }}>
+
+            {/* Left Panel: Submission List (~40%) */}
+            <div style={{
+              width: '40%',
+              minWidth: 280,
+              display: showMobilePanel === 'form' && selectedSubmission ? 'none' : 'flex',
+              flexDirection: 'column',
+              background: '#fff',
+              borderRadius: '12px 0 0 12px',
+              border: '1px solid #e2e8f0',
+              overflow: 'hidden',
+              flexShrink: 0,
+            }}>
+              {/* List header */}
+              <div style={{ padding: '16px 16px 12px', borderBottom: '1px solid #e2e8f0', flexShrink: 0 }}>
+                <div style={{ fontSize: '1rem', fontWeight: 700, color: '#111827', marginBottom: 12 }}>
+                  Submissions
+                  <span style={{ marginLeft: 8, fontSize: '0.78rem', fontWeight: 600, color: '#6b7280' }}>
+                    ({filteredSubmissions.length} shown)
+                  </span>
                 </div>
-              : <div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {submissions.slice((submissionsPage - 1) * submissionsPerPage, submissionsPage * submissionsPerPage).map(s => (
-                      <div key={s.id} style={{ background: '#fff', borderRadius: 10, padding: '16px 20px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: 16 }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontWeight: 600, fontSize: '0.92rem', color: '#111827' }}>{s.studentName || 'Unknown'}</div>
-                          <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: 2 }}>{s.exerciseTitle} · <span style={{ fontFamily: 'monospace' }}>{s.sourceFilename}</span></div>
-                        </div>
-                        <div style={{ fontSize: '0.8rem', color: '#9ca3af', whiteSpace: 'nowrap' }}>{new Date(s.submittedAt).toLocaleDateString()}</div>
-                        <div style={{ minWidth: 80, textAlign: 'right' }}>
-                          {s.tutorScore != null
-                            ? <span style={{ fontWeight: 700, color: '#6366f1' }}>{s.tutorScore}/100</span>
-                            : <span style={{ fontSize: '0.78rem', color: '#d97706', fontWeight: 600, background: '#fef3c7', padding: '2px 8px', borderRadius: 6 }}>Ungraded</span>}
-                        </div>
-                        <button style={{ padding: '7px 16px', border: 'none', borderRadius: 7, background: '#eef2ff', color: '#6366f1', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600, whiteSpace: 'nowrap' }}
-                          onClick={() => openGrade(s)}>{s.tutorScore != null ? 'Re-grade' : 'Grade'}</button>
-                      </div>
+                {/* Filter bar */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <select
+                    value={filterExercise}
+                    onChange={e => { setFilterExercise(e.target.value); setSubmissionsPage(1); }}
+                    style={{ width: '100%', padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: 7, fontSize: '0.82rem', background: '#f8fafc', color: '#374151', cursor: 'pointer' }}>
+                    <option value="">All Exercises</option>
+                    {exerciseOptions.map(([id, title]) => (
+                      <option key={id} value={String(id)}>{title}</option>
+                    ))}
+                  </select>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    {['All', 'Ungraded', 'Graded'].map(status => (
+                      <button key={status}
+                        onClick={() => { setFilterStatus(status); setSubmissionsPage(1); }}
+                        style={{
+                          flex: 1, padding: '5px 0', border: 'none', borderRadius: 6, cursor: 'pointer',
+                          fontSize: '0.78rem', fontWeight: 600,
+                          background: filterStatus === status ? '#6366f1' : '#f1f5f9',
+                          color: filterStatus === status ? '#fff' : '#6b7280',
+                          transition: 'all 0.15s',
+                        }}>
+                        {status}
+                      </button>
                     ))}
                   </div>
-                  <Pagination
-                    totalItems={submissions.length}
-                    currentPage={submissionsPage}
-                    itemsPerPage={submissionsPerPage}
-                    onPageChange={setSubmissionsPage}
-                    onItemsPerPageChange={setSubmissionsPerPage}
-                  />
-                </div>}
+                </div>
+              </div>
+
+              {/* Submission rows */}
+              <div style={{ flex: 1, overflowY: 'auto' }}>
+                {filteredSubmissions.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '40px 20px', color: '#9ca3af' }}>
+                    <div style={{ fontSize: '2rem', marginBottom: 8 }}>📭</div>
+                    <div style={{ fontWeight: 600, fontSize: '0.88rem' }}>No submissions found</div>
+                  </div>
+                ) : (
+                  pagedSubmissions.map(s => {
+                    const isSelected = selectedSubmission?.id === s.id;
+                    return (
+                      <div
+                        key={s.id}
+                        onClick={() => openGrade(s)}
+                        style={{
+                          padding: '12px 14px',
+                          borderBottom: '1px solid #f1f5f9',
+                          cursor: 'pointer',
+                          background: isSelected ? '#eef2ff' : '#fff',
+                          borderLeft: isSelected ? '3px solid #6366f1' : '3px solid transparent',
+                          transition: 'background 0.1s',
+                        }}
+                        onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = '#f8fafc'; }}
+                        onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = '#fff'; }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
+                          <div style={{ fontWeight: 600, fontSize: '0.88rem', color: isSelected ? '#4338ca' : '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '60%' }}>
+                            {s.studentName || 'Unknown'}
+                          </div>
+                          <div>
+                            {s.tutorScore != null
+                              ? <span style={{ fontWeight: 700, fontSize: '0.82rem', color: '#6366f1', background: '#eef2ff', padding: '2px 8px', borderRadius: 6 }}>{s.tutorScore}/100</span>
+                              : <span style={{ fontSize: '0.75rem', color: '#d97706', fontWeight: 600, background: '#fef3c7', padding: '2px 8px', borderRadius: 6 }}>Ungraded</span>}
+                          </div>
+                        </div>
+                        <div style={{ fontSize: '0.77rem', color: '#6b7280', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {s.exerciseTitle}
+                        </div>
+                        <div style={{ fontSize: '0.73rem', color: '#9ca3af', marginTop: 2 }}>
+                          {new Date(s.submittedAt).toLocaleDateString()}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Pagination inside left panel */}
+              <div style={{ borderTop: '1px solid #e2e8f0', padding: '10px 14px', flexShrink: 0, background: '#fafafa' }}>
+                <Pagination
+                  totalItems={filteredSubmissions.length}
+                  currentPage={submissionsPage}
+                  itemsPerPage={submissionsPerPage}
+                  onPageChange={setSubmissionsPage}
+                  onItemsPerPageChange={setSubmissionsPerPage}
+                />
+              </div>
+            </div>
+
+            {/* Right Panel: Grading Form (~60%) */}
+            <div style={{
+              flex: 1,
+              display: showMobilePanel === 'list' && !selectedSubmission ? 'none' : 'flex',
+              flexDirection: 'column',
+              background: '#fff',
+              borderRadius: '0 12px 12px 0',
+              border: '1px solid #e2e8f0',
+              borderLeft: 'none',
+              overflow: 'hidden',
+            }}>
+              {!selectedSubmission ? (
+                // Placeholder when nothing selected
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', color: '#9ca3af' }}>
+                  <div style={{ fontSize: '3rem', marginBottom: 12 }}>📋</div>
+                  <div style={{ fontWeight: 600, fontSize: '1rem', marginBottom: 4 }}>Select a submission to grade</div>
+                  <div style={{ fontSize: '0.83rem' }}>Click any submission in the list on the left</div>
+                </div>
+              ) : (
+                <>
+                  {/* Grading panel header */}
+                  <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', flexShrink: 0, background: '#fafafa' }}>
+                    {/* Mobile back button */}
+                    <button
+                      onClick={() => { setShowMobilePanel('list'); }}
+                      style={{ display: 'none', marginBottom: 10, padding: '6px 12px', border: '1px solid #e2e8f0', borderRadius: 7, background: '#fff', color: '#4b5563', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600 }}
+                      className="mobile-back-btn">
+                      &larr; Back to list
+                    </button>
+                    <div style={{ fontWeight: 700, fontSize: '1rem', color: '#111827', marginBottom: 2 }}>
+                      {selectedSubmission.studentName || 'Unknown'}
+                    </div>
+                    <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center', marginTop: 6 }}>
+                      <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>
+                        Exercise: <strong style={{ color: '#374151' }}>{selectedSubmission.exerciseTitle}</strong>
+                      </span>
+                      {gradingState?.sourceFilename && (
+                        <span style={{ fontSize: '0.8rem', color: '#6b7280', fontFamily: 'monospace' }}>
+                          {gradingState.sourceFilename}
+                        </span>
+                      )}
+                      <span style={{ fontSize: '0.8rem', color: '#9ca3af' }}>
+                        {new Date(selectedSubmission.submittedAt).toLocaleString()}
+                      </span>
+                      {selectedSubmission.tutorScore != null && (
+                        <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#6366f1', background: '#eef2ff', padding: '2px 10px', borderRadius: 8 }}>
+                          Current score: {selectedSubmission.tutorScore}/100
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Scrollable grading body */}
+                  <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+
+                    {/* Blockly Preview */}
+                    <div style={{ marginBottom: 20, border: '1px solid #e2e8f0', borderRadius: 10, overflow: 'hidden' }}>
+                      <button
+                        onClick={() => setGradingState(prev => prev ? { ...prev, previewOpen: !prev.previewOpen } : prev)}
+                        style={{
+                          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          padding: '10px 14px', border: 'none', background: '#f8fafc', cursor: 'pointer',
+                          fontSize: '0.8rem', fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em',
+                        }}>
+                        <span>Blockly Preview</span>
+                        <span style={{ fontSize: '0.9rem', color: '#6b7280' }}>
+                          {gradingState?.previewOpen ? '▲ Collapse' : '▼ Expand'}
+                        </span>
+                      </button>
+                      {gradingState?.previewOpen && (
+                        <div style={{ padding: 12 }}>
+                          {gradingState.blocklyState ? (
+                            <div style={{ width: '100%', height: 400, borderRadius: 6, overflow: 'hidden' }}>
+                              <BlocklyWorkspace
+                                readOnly={true}
+                                initialState={gradingState.blocklyState}
+                              />
+                            </div>
+                          ) : (
+                            <div style={{ padding: 16, color: '#6b7280', textAlign: 'center', fontStyle: 'italic', fontSize: '0.85rem' }}>
+                              {gradingState.blocklyState === null && gradingState.aspectResults === null
+                                ? 'Loading workspace...'
+                                : 'No workspace saved for this submission'}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Aspect results */}
+                    {gradingState?.aspectResults === null && (
+                      <div style={{ fontSize: '0.82rem', color: '#9ca3af', marginBottom: 16 }}>Loading grading results...</div>
+                    )}
+                    {gradingState?.aspectResults && gradingState.aspectResults.length > 0 && (
+                      <div style={{ marginBottom: 20 }}>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>Auto-Grading Results</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          {gradingState.aspectResults.map((a, i) => (
+                            <div key={i} style={{
+                              display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8,
+                              background: a.passed ? '#f0fdf4' : '#fef2f2',
+                              border: `1px solid ${a.passed ? '#bbf7d0' : '#fecaca'}`,
+                              fontSize: '0.83rem', color: a.passed ? '#15803d' : '#dc2626', fontWeight: 500,
+                            }}>
+                              <span>{a.passed ? '✅' : '❌'}</span>
+                              <span>{a.label}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Score input */}
+                    <div style={{ fontSize: '0.78rem', fontWeight: 600, color: '#374151', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Score (0–100)</div>
+                    <input type="number" min={0} max={100} placeholder="e.g. 85"
+                      style={{ width: '100%', padding: '10px 14px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: '1.1rem', fontWeight: 700, marginBottom: 16, outline: 'none', boxSizing: 'border-box' }}
+                      value={gradeForm.score} onChange={e => setGradeForm(f => ({ ...f, score: e.target.value }))} />
+
+                    {/* Comment input */}
+                    <div style={{ fontSize: '0.78rem', fontWeight: 600, color: '#374151', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Comment (optional)</div>
+                    <textarea rows={4} placeholder="Feedback for the student..."
+                      style={{ width: '100%', padding: '10px 14px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: '0.9rem', resize: 'vertical', outline: 'none', marginBottom: 20, boxSizing: 'border-box' }}
+                      value={gradeForm.comment} onChange={e => setGradeForm(f => ({ ...f, comment: e.target.value }))} />
+                  </div>
+
+                  {/* Save button footer */}
+                  <div style={{ padding: '14px 20px', borderTop: '1px solid #e2e8f0', background: '#fafafa', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                    <div style={{ fontSize: '0.78rem', color: '#9ca3af' }}>
+                      Auto-advances to next ungraded after saving
+                    </div>
+                    <button
+                      disabled={savingGrade}
+                      onClick={saveGrade}
+                      style={{
+                        padding: '10px 28px', border: 'none', borderRadius: 8, cursor: savingGrade ? 'default' : 'pointer',
+                        background: savingGrade ? '#a5b4fc' : '#6366f1', color: '#fff', fontWeight: 700,
+                        fontSize: '0.92rem', transition: 'background 0.15s',
+                      }}>
+                      {savingGrade ? 'Saving...' : 'Save Grade'}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         )}
 
@@ -453,87 +731,6 @@ export default function Admin() {
           </div>
         )}
       </main>
-
-      {/* Grade Modal */}
-      {grading && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }}
-          onClick={() => setGrading(null)}>
-          <div style={{ background: '#fff', borderRadius: 16, padding: 32, width: grading.previewOpen ? 760 : 460, boxShadow: '0 20px 60px rgba(0,0,0,0.2)', maxHeight: '90vh', overflowY: 'auto', transition: 'width 0.2s' }}
-            onClick={e => e.stopPropagation()}>
-            <div style={{ fontWeight: 700, fontSize: '1.1rem', color: '#111827', marginBottom: 4 }}>Grade Submission</div>
-            <div style={{ fontSize: '0.82rem', color: '#6b7280', fontFamily: 'monospace', marginBottom: 20 }}>{grading.sourceFilename}</div>
-
-            {/* Blockly Preview Section */}
-            <div style={{ marginBottom: 20, border: '1px solid #e2e8f0', borderRadius: 10, overflow: 'hidden' }}>
-              <button
-                onClick={() => setGrading(prev => prev ? { ...prev, previewOpen: !prev.previewOpen } : prev)}
-                style={{
-                  width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: '10px 14px', border: 'none', background: '#f8fafc', cursor: 'pointer',
-                  fontSize: '0.8rem', fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em',
-                }}>
-                <span>Blockly Preview</span>
-                <span style={{ fontSize: '0.9rem', color: '#6b7280' }}>{grading.previewOpen ? '▲ Collapse' : '▼ Expand'}</span>
-              </button>
-              {grading.previewOpen && (
-                <div style={{ padding: 12 }}>
-                  {grading.blocklyState ? (
-                    <div style={{ width: '100%', height: 400, borderRadius: 6, overflow: 'hidden' }}>
-                      <BlocklyWorkspace
-                        readOnly={true}
-                        initialState={grading.blocklyState}
-                      />
-                    </div>
-                  ) : (
-                    <div style={{ padding: 16, color: '#6b7280', textAlign: 'center', fontStyle: 'italic', fontSize: '0.85rem' }}>
-                      {grading.blocklyState === null && grading.aspectResults === null
-                        ? 'Loading workspace...'
-                        : 'No workspace saved for this submission'}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {grading.aspectResults === null && (
-              <div style={{ fontSize: '0.82rem', color: '#9ca3af', marginBottom: 16 }}>Loading grading results...</div>
-            )}
-            {grading.aspectResults && grading.aspectResults.length > 0 && (
-              <div style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>Grading Results</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {grading.aspectResults.map((a, i) => (
-                    <div key={i} style={{
-                      display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8,
-                      background: a.passed ? '#f0fdf4' : '#fef2f2',
-                      border: `1px solid ${a.passed ? '#bbf7d0' : '#fecaca'}`,
-                      fontSize: '0.83rem', color: a.passed ? '#15803d' : '#dc2626', fontWeight: 500,
-                    }}>
-                      <span>{a.passed ? '✅' : '❌'}</span>
-                      <span>{a.label}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div style={{ fontSize: '0.78rem', fontWeight: 600, color: '#374151', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Score (0–100)</div>
-            <input type="number" min={0} max={100} placeholder="e.g. 85"
-              style={{ width: '100%', padding: '10px 14px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: '1.1rem', fontWeight: 700, marginBottom: 16, outline: 'none', boxSizing: 'border-box' }}
-              value={gradeForm.score} onChange={e => setGradeForm(f => ({ ...f, score: e.target.value }))} />
-            <div style={{ fontSize: '0.78rem', fontWeight: 600, color: '#374151', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Comment (optional)</div>
-            <textarea rows={3} placeholder="Feedback for the student..."
-              style={{ width: '100%', padding: '10px 14px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: '0.9rem', resize: 'vertical', outline: 'none', marginBottom: 20, boxSizing: 'border-box' }}
-              value={gradeForm.comment} onChange={e => setGradeForm(f => ({ ...f, comment: e.target.value }))} />
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button style={{ padding: '9px 20px', border: '1px solid #e2e8f0', borderRadius: 8, cursor: 'pointer', background: '#fff', color: '#4b5563', fontWeight: 600, fontSize: '0.88rem' }}
-                onClick={() => setGrading(null)}>Cancel</button>
-              <button style={{ padding: '9px 20px', border: 'none', borderRadius: 8, cursor: 'pointer', background: '#6366f1', color: '#fff', fontWeight: 600, fontSize: '0.88rem' }}
-                onClick={submitGrade}>Save Grade</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

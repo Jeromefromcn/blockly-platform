@@ -404,6 +404,29 @@ CREATE TABLE IF NOT EXISTS role_permissions (
 
 ## 13. Changelog
 
+### 2026-03-27 — Feature: Bulk Grading UI with Two-Panel Layout (#9)
+
+Redesigned the Submissions tab in the Admin panel from a vertical card list + modal approach into an efficient two-panel bulk grading interface.
+
+**Files changed:**
+- `frontend/src/pages/Admin.jsx` — Replaced the single-column submissions list and grade modal with a side-by-side two-panel layout. Left panel (~40%) shows a filterable, paginated submission list with exercise dropdown and All/Ungraded/Graded status toggle. Right panel (~60%) shows the full grading form for the selected submission: student details, collapsible Blockly workspace preview (read-only), auto-grade aspect results (✅/❌), score input, comment textarea, and a Save Grade button. After saving, the panel automatically advances to the next ungraded submission in the filtered list. If all submissions are graded, a success message is shown. A placeholder is displayed in the right panel when no submission is selected. Mobile: a "Back to list" toggle hides/shows panels.
+
+**State changes:**
+- Removed modal-based `grading` state; replaced with `selectedSubmission`, `gradingState`, `gradeForm`, `savingGrade`, `showMobilePanel`
+- Added `filterExercise` and `filterStatus` state for the filter bar in the left panel
+- `openGrade(sub)` now loads into the right panel instead of a modal overlay
+- `saveGrade()` reloads submissions after PATCH and finds the next ungraded submission to auto-advance
+
+**UX features:**
+- Filter bar: exercise dropdown (populated from unique exercises in submissions) + All / Ungraded / Graded toggle buttons
+- Selected row highlighted with indigo left border and indigo background
+- Score badge in each row: "Ungraded" (amber) or "X/100" (indigo)
+- Right panel footer shows hint text "Auto-advances to next ungraded after saving"
+- Saving button disabled and shows "Saving..." during the API call
+- No backend changes required
+
+---
+
 ### 2026-03-27 — Feature: Student Progress Dashboard (#4)
 
 Added a Progress page for students to track their exercise completion, scores, and overall performance.

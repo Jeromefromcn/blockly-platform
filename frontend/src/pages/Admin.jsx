@@ -638,64 +638,42 @@ export default function Admin() {
                       {gradingState?.previewOpen && (
                         <div style={{ padding: 12 }}>
                           {gradingState.blocklyState ? (
-                            <div style={{ width: '100%', height: 400, borderRadius: 6, overflow: 'hidden' }}>
-                              <BlocklyWorkspace
-                                readOnly={true}
-                                initialState={gradingState.blocklyState}
-                              />
-                            </div>
+                            <>
+                              <div style={{ width: '100%', height: 400, borderRadius: 6, overflow: 'hidden', marginBottom: 12 }}>
+                                <BlocklyWorkspace
+                                  readOnly={true}
+                                  initialState={gradingState.blocklyState}
+                                />
+                              </div>
+                              {gradingState.generatedCode && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                  <button
+                                    onClick={executeCode}
+                                    disabled={gradingState.codeRunning}
+                                    style={{
+                                      padding: '8px 14px', border: 'none', borderRadius: 6, background: gradingState.codeRunning ? '#a5b4fc' : '#6366f1',
+                                      color: '#fff', fontWeight: 600, fontSize: '0.82rem', cursor: gradingState.codeRunning ? 'default' : 'pointer',
+                                      transition: 'background 0.15s',
+                                    }}>
+                                    {gradingState.codeRunning ? 'Running...' : '▶ Run Code'}
+                                  </button>
+                                  {gradingState.codeOutput !== null && (
+                                    <div style={{
+                                      padding: 10, borderRadius: 6, background: '#f3f4f6', border: '1px solid #d1d5db',
+                                      fontFamily: 'monospace', fontSize: '0.8rem', color: '#1f2937', maxHeight: 200, overflowY: 'auto',
+                                      whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: '1.4',
+                                    }}>
+                                      {gradingState.codeOutput}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </>
                           ) : (
                             <div style={{ padding: 16, color: '#6b7280', textAlign: 'center', fontStyle: 'italic', fontSize: '0.85rem' }}>
                               {gradingState.blocklyState === null && gradingState.aspectResults === null
                                 ? 'Loading workspace...'
                                 : 'No workspace saved for this submission'}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Code Execution */}
-                    <div style={{ marginBottom: 20, border: '1px solid #e2e8f0', borderRadius: 10, overflow: 'hidden' }}>
-                      <button
-                        onClick={() => setGradingState(prev => prev ? { ...prev, codeOutputOpen: !prev.codeOutputOpen } : prev)}
-                        style={{
-                          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                          padding: '10px 14px', border: 'none', background: '#f8fafc', cursor: 'pointer',
-                          fontSize: '0.8rem', fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em',
-                        }}>
-                        <span>Code Execution</span>
-                        <span style={{ fontSize: '0.9rem', color: '#6b7280' }}>
-                          {gradingState?.codeOutputOpen ? '▲ Collapse' : '▼ Expand'}
-                        </span>
-                      </button>
-                      {gradingState?.codeOutputOpen && (
-                        <div style={{ padding: 12 }}>
-                          {gradingState.generatedCode ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                              <button
-                                onClick={executeCode}
-                                disabled={gradingState.codeRunning}
-                                style={{
-                                  padding: '8px 14px', border: 'none', borderRadius: 6, background: gradingState.codeRunning ? '#a5b4fc' : '#6366f1',
-                                  color: '#fff', fontWeight: 600, fontSize: '0.82rem', cursor: gradingState.codeRunning ? 'default' : 'pointer',
-                                  transition: 'background 0.15s',
-                                }}>
-                                {gradingState.codeRunning ? 'Running...' : '▶ Run Code'}
-                              </button>
-                              {gradingState.codeOutput !== null && (
-                                <div style={{
-                                  padding: 10, borderRadius: 6, background: '#f3f4f6', border: '1px solid #d1d5db',
-                                  fontFamily: 'monospace', fontSize: '0.8rem', color: '#1f2937', maxHeight: 200, overflowY: 'auto',
-                                  whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: '1.4',
-                                }}>
-                                  {gradingState.codeOutput}
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <div style={{ padding: 16, color: '#6b7280', textAlign: 'center', fontStyle: 'italic', fontSize: '0.85rem' }}>
-                              No code generated for this submission
                             </div>
                           )}
                         </div>

@@ -404,6 +404,33 @@ CREATE TABLE IF NOT EXISTS role_permissions (
 
 ## 13. Changelog
 
+### 2026-03-27 — Feature: Student Progress Dashboard (#4)
+
+Added a Progress page for students to track their exercise completion, scores, and overall performance.
+
+**Files changed:**
+- `backend/src/main/java/com/blocklyplatform/repository/SubmissionRepository.java` — Added `findByStudentNameAndDeletedAtIsNullOrderBySubmittedAtDesc` query method to look up submissions by `studentName`
+- `backend/src/main/java/com/blocklyplatform/service/GradingService.java` — Added `getMySubmissions(username)` method that fetches and maps submissions for the given student name
+- `backend/src/main/java/com/blocklyplatform/controller/SubmissionController.java` — Added `GET /api/submissions/mine` endpoint (authenticated); returns current user's submissions by matching `studentName` to JWT username
+- `frontend/src/pages/Progress.jsx` — New page; fetches `/api/exercises/published` and `/api/submissions/mine`; shows summary stats bar (total, attempted, graded, avg score, pass rate) and per-exercise status list with color-coded badges; includes an overall completion progress bar
+- `frontend/src/App.jsx` — Imported `Progress`; added `/progress` protected route; added "My Progress" nav link visible only to STUDENT role users
+
+**New API endpoint:**
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | /api/submissions/mine | Yes | Returns all non-deleted submissions where `studentName` matches the authenticated user's username |
+
+**Progress page features:**
+- Summary stats: total exercises, attempted count, graded count, average score, pass rate (threshold: 60/100)
+- Per-exercise status: "Not attempted" (gray) / "Submitted — Pending grade" (yellow) / "Score: X/100" (green if passed, red if failed)
+- When multiple submissions exist per exercise, shows the graded one with the highest score
+- Overall completion progress bar with color-coded legend
+- Clicking any exercise row navigates to the exercise workspace
+- Inline styles consistent with the indigo/blue theme; no external CSS libraries
+
+---
+
 ### 2026-03-27 — Feature: Blockly Preview in Grade Submission Modal (#11)
 
 Added a collapsible read-only Blockly workspace preview inside the Grade Submission modal so tutors can visually inspect student block arrangements while grading.

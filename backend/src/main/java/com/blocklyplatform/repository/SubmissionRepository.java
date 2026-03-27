@@ -8,4 +8,5 @@ import java.util.List;
 public interface SubmissionRepository extends JpaRepository<Submission, Long> {
     List<Submission> findByDeletedAtIsNullOrderBySubmittedAtDesc();
     List<Submission> findByExerciseIdAndDeletedAtIsNullOrderBySubmittedAtDesc(Long exerciseId);
+    List<Submission> findByStudentNameAndDeletedAtIsNullOrderBySubmittedAtDesc(String studentName);
 }

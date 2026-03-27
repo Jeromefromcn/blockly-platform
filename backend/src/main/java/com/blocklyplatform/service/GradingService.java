@@ -162,6 +162,27 @@ public class GradingService {
         );
     }
 
+    public List<Map<String, Object>> getMySubmissions(String username) {
+        List<Submission> submissions = submissionRepo
+                .findByStudentNameAndDeletedAtIsNullOrderBySubmittedAtDesc(username);
+        return submissions.stream().map(s -> {
+            Map<String, Object> m = new HashMap<>();
+            m.put("id", s.getId());
+            m.put("exerciseId", s.getExercise().getId());
+            m.put("exerciseTitle", s.getExercise().getTitle());
+            m.put("studentName", s.getStudentName());
+            m.put("versionNumber", s.getVersionNumber());
+            m.put("submittedAt", s.getSubmittedAt());
+            gradeRepo.findBySubmissionId(s.getId()).ifPresent(g -> {
+                m.put("tutorScore", g.getTutorScore());
+                m.put("autoScore", g.getAutoScore());
+                m.put("tutorComment", g.getTutorComment());
+                m.put("gradedAt", g.getGradedAt());
+            });
+            return m;
+        }).collect(Collectors.toList());
+    }
+
     public List<Map<String, Object>> listSubmissions(Long exerciseId) {
         List<Submission> submissions = exerciseId != null
                 ? submissionRepo.findByExerciseIdAndDeletedAtIsNullOrderBySubmittedAtDesc(exerciseId)

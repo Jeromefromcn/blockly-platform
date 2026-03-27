@@ -5,6 +5,7 @@ import Admin from './pages/Admin.jsx';
 import AdminEditor from './pages/AdminEditor.jsx';
 import Login from './pages/Login.jsx';
 import Profile from './pages/Profile.jsx';
+import Progress from './pages/Progress.jsx';
 import SuperAdminPanel from './pages/SuperAdminPanel.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
@@ -43,6 +44,14 @@ function NavBar() {
             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
             Home
           </a>
+          {/* Show My Progress link for STUDENT only */}
+          {user.role === 'STUDENT' && (
+            <a href="/progress" style={{ padding: '6px 12px', borderRadius: 8, fontSize: '0.88rem', fontWeight: 500, color: '#4a5568', transition: 'background 0.15s' }}
+              onMouseEnter={e => e.currentTarget.style.background = '#f1f5f9'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+              My Progress
+            </a>
+          )}
           {/* Show Admin link for TUTOR and SUPER_ADMIN */}
           {(user.role === 'TUTOR' || user.role === 'SUPER_ADMIN') && (
             <a href="/admin" style={{ padding: '6px 12px', borderRadius: 8, fontSize: '0.88rem', fontWeight: 500, color: '#4a5568', transition: 'background 0.15s' }}
@@ -114,6 +123,11 @@ function AppRoutes() {
         <Route path="/profile" element={
           <ProtectedRoute>
             <Profile />
+          </ProtectedRoute>
+        } />
+        <Route path="/progress" element={
+          <ProtectedRoute>
+            <Progress />
           </ProtectedRoute>
         } />
 

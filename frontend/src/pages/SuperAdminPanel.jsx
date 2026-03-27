@@ -33,6 +33,65 @@ function RoleBadge({ role }) {
   );
 }
 
+function Pagination({ totalItems, currentPage, itemsPerPage, onPageChange, onItemsPerPageChange }) {
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  if (totalItems === 0) return null;
+  const startItem = (currentPage - 1) * itemsPerPage + 1;
+  const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+
+  const pageNumbers = [];
+  for (let i = 1; i <= totalPages; i++) {
+    if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+      pageNumbers.push(i);
+    }
+  }
+
+  const pagesWithEllipsis = [];
+  let prev = null;
+  for (const p of pageNumbers) {
+    if (prev !== null && p - prev > 1) pagesWithEllipsis.push('...');
+    pagesWithEllipsis.push(p);
+    prev = p;
+  }
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14, flexWrap: 'wrap', gap: 10 }}>
+      <div style={{ fontSize: '0.83rem', color: '#718096' }}>
+        Showing {startItem}–{endItem} of {totalItems} items
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <select
+          value={itemsPerPage}
+          onChange={e => { onItemsPerPageChange(Number(e.target.value)); onPageChange(1); }}
+          style={{ padding: '4px 8px', border: '1px solid #cbd5e0', borderRadius: 5, fontSize: '0.82rem', background: '#fff', cursor: 'pointer' }}>
+          {[10, 25, 50, 100].map(n => <option key={n} value={n}>{n} / page</option>)}
+        </select>
+        <button
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          style={{ padding: '4px 10px', border: '1px solid #cbd5e0', borderRadius: 5, background: currentPage === 1 ? '#f7fafc' : '#fff', color: currentPage === 1 ? '#a0aec0' : '#2d3748', cursor: currentPage === 1 ? 'default' : 'pointer', fontSize: '0.82rem', fontWeight: 600 }}>
+          Previous
+        </button>
+        {pagesWithEllipsis.map((p, i) =>
+          p === '...'
+            ? <span key={`e${i}`} style={{ fontSize: '0.82rem', color: '#a0aec0', padding: '0 2px' }}>...</span>
+            : <button key={p}
+                onClick={() => onPageChange(p)}
+                style={{ padding: '4px 9px', border: '1px solid #cbd5e0', borderRadius: 5, background: p === currentPage ? '#2b6cb0' : '#fff', color: p === currentPage ? '#fff' : '#2d3748', cursor: 'pointer', fontSize: '0.82rem', fontWeight: p === currentPage ? 700 : 400 }}>
+                {p}
+              </button>
+        )}
+        <button
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          style={{ padding: '4px 10px', border: '1px solid #cbd5e0', borderRadius: 5, background: currentPage === totalPages ? '#f7fafc' : '#fff', color: currentPage === totalPages ? '#a0aec0' : '#2d3748', cursor: currentPage === totalPages ? 'default' : 'pointer', fontSize: '0.82rem', fontWeight: 600 }}>
+          Next
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function SuperAdminPanel() {
   const [tab, setTab] = useState('users');
   const [users, setUsers] = useState([]);
@@ -45,6 +104,8 @@ export default function SuperAdminPanel() {
   const [permMsg, setPermMsg] = useState(null);
   const csvRef = useRef(null);
   const [importMsg, setImportMsg] = useState(null);
+  const [usersPage, setUsersPage] = useState(1);
+  const [usersPerPage, setUsersPerPage] = useState(10);
 
   const loadUsers = () => apiGet('/api/admin/users').then(r => r.json()).then(setUsers);
   const loadPerms = () => Promise.all(['TUTOR', 'STUDENT'].map(role =>
@@ -190,7 +251,7 @@ export default function SuperAdminPanel() {
             <tbody>
               {users.length === 0
                 ? <tr><td colSpan={7} style={{ ...S.td, textAlign: 'center', color: '#a0aec0' }}>No users</td></tr>
-                : users.map(u => (
+                : users.slice((usersPage - 1) * usersPerPage, usersPage * usersPerPage).map(u => (
                   <tr key={u.id}>
                     <td style={S.td}>{u.id}</td>
                     <td style={{ ...S.td, fontFamily: 'monospace' }}>{u.username}</td>
@@ -210,6 +271,13 @@ export default function SuperAdminPanel() {
                 ))}
             </tbody>
           </table>
+          <Pagination
+            totalItems={users.length}
+            currentPage={usersPage}
+            itemsPerPage={usersPerPage}
+            onPageChange={setUsersPage}
+            onItemsPerPageChange={setUsersPerPage}
+          />
         </div>
       )}
 

@@ -53,6 +53,65 @@ function getClientId() {
   return id;
 }
 
+function Pagination({ totalItems, currentPage, itemsPerPage, onPageChange, onItemsPerPageChange }) {
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  if (totalItems === 0) return null;
+  const startItem = (currentPage - 1) * itemsPerPage + 1;
+  const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+
+  const pageNumbers = [];
+  for (let i = 1; i <= totalPages; i++) {
+    if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+      pageNumbers.push(i);
+    }
+  }
+
+  const pagesWithEllipsis = [];
+  let prev = null;
+  for (const p of pageNumbers) {
+    if (prev !== null && p - prev > 1) pagesWithEllipsis.push('...');
+    pagesWithEllipsis.push(p);
+    prev = p;
+  }
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 16, flexWrap: 'wrap', gap: 10 }}>
+      <div style={{ fontSize: '0.83rem', color: '#718096' }}>
+        Showing {startItem}–{endItem} of {totalItems} items
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <select
+          value={itemsPerPage}
+          onChange={e => { onItemsPerPageChange(Number(e.target.value)); onPageChange(1); }}
+          style={{ padding: '4px 8px', border: '1px solid #cbd5e0', borderRadius: 6, fontSize: '0.82rem', background: '#fff', cursor: 'pointer' }}>
+          {[10, 25, 50, 100].map(n => <option key={n} value={n}>{n} / page</option>)}
+        </select>
+        <button
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          style={{ padding: '4px 10px', border: '1px solid #cbd5e0', borderRadius: 6, background: currentPage === 1 ? '#f7fafc' : '#fff', color: currentPage === 1 ? '#a0aec0' : '#2d3748', cursor: currentPage === 1 ? 'default' : 'pointer', fontSize: '0.82rem', fontWeight: 600 }}>
+          Previous
+        </button>
+        {pagesWithEllipsis.map((p, i) =>
+          p === '...'
+            ? <span key={`e${i}`} style={{ fontSize: '0.82rem', color: '#a0aec0', padding: '0 2px' }}>...</span>
+            : <button key={p}
+                onClick={() => onPageChange(p)}
+                style={{ padding: '4px 9px', border: '1px solid #cbd5e0', borderRadius: 6, background: p === currentPage ? '#4c51bf' : '#fff', color: p === currentPage ? '#fff' : '#2d3748', cursor: 'pointer', fontSize: '0.82rem', fontWeight: p === currentPage ? 700 : 400 }}>
+                {p}
+              </button>
+        )}
+        <button
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          style={{ padding: '4px 10px', border: '1px solid #cbd5e0', borderRadius: 6, background: currentPage === totalPages ? '#f7fafc' : '#fff', color: currentPage === totalPages ? '#a0aec0' : '#2d3748', cursor: currentPage === totalPages ? 'default' : 'pointer', fontSize: '0.82rem', fontWeight: 600 }}>
+          Next
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   const [exercises, setExercises] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -62,6 +121,8 @@ export default function Home() {
   const [liked, setLiked] = useState(() => {
     try { return JSON.parse(localStorage.getItem('liked') || '{}'); } catch { return {}; }
   });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -81,6 +142,7 @@ export default function Home() {
   };
 
   useEffect(() => {
+    setCurrentPage(1);
     const qs = buildQueryString();
     apiGet(`/api/exercises/published${qs}`)
       .then(r => r.json())
@@ -151,49 +213,60 @@ export default function Home() {
             <div style={{ fontSize: '0.85rem' }}>Check back later or ask your tutor to publish some exercises.</div>
           </div>
         )
-        : exercises.map(ex => (
-          <div key={ex.id} style={S.card}
-            onMouseEnter={e => {
-              e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.1), 0 2px 6px rgba(0,0,0,0.06)';
-              e.currentTarget.style.transform = 'translateY(-1px)';
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)';
-              e.currentTarget.style.transform = 'translateY(0)';
-            }}
-            onClick={() => navigate(`/exercise/${ex.id}`)}>
-            <div style={{
-              width: 4, borderRadius: 4, alignSelf: 'stretch', flexShrink: 0,
-              background: ex.difficulty === 'EASY' ? '#48bb78' : ex.difficulty === 'HARD' ? '#fc8181' : '#f6ad55'
-            }} />
-            <div style={S.cardRow}>
-              <div style={{ flex: 1 }}>
-                <div style={S.title}>{ex.title}</div>
-                <div style={{ marginTop: 6, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                  {ex.category && (
-                    <span style={{ display: 'inline-block', padding: '3px 9px', backgroundColor: '#edf2f7', borderRadius: 20, fontSize: '0.78rem', fontWeight: 500, color: '#4a5568' }}>
-                      {ex.category}
-                    </span>
-                  )}
-                  <span style={{
-                    display: 'inline-block', padding: '3px 9px', borderRadius: 20, fontSize: '0.78rem', fontWeight: 600,
-                    background: ex.difficulty === 'EASY' ? '#c6f6d5' : ex.difficulty === 'HARD' ? '#fed7d7' : '#fefcbf',
-                    color: ex.difficulty === 'EASY' ? '#22543d' : ex.difficulty === 'HARD' ? '#822727' : '#744210',
-                  }}>
-                    {ex.difficulty || 'MEDIUM'}
-                  </span>
-                  <span style={{ fontSize: '0.78rem', color: '#a0aec0' }}>v{ex.currentVersionNumber}</span>
+        : (
+          <div>
+            {exercises.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(ex => (
+              <div key={ex.id} style={S.card}
+                onMouseEnter={e => {
+                  e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.1), 0 2px 6px rgba(0,0,0,0.06)';
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
+                onClick={() => navigate(`/exercise/${ex.id}`)}>
+                <div style={{
+                  width: 4, borderRadius: 4, alignSelf: 'stretch', flexShrink: 0,
+                  background: ex.difficulty === 'EASY' ? '#48bb78' : ex.difficulty === 'HARD' ? '#fc8181' : '#f6ad55'
+                }} />
+                <div style={S.cardRow}>
+                  <div style={{ flex: 1 }}>
+                    <div style={S.title}>{ex.title}</div>
+                    <div style={{ marginTop: 6, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                      {ex.category && (
+                        <span style={{ display: 'inline-block', padding: '3px 9px', backgroundColor: '#edf2f7', borderRadius: 20, fontSize: '0.78rem', fontWeight: 500, color: '#4a5568' }}>
+                          {ex.category}
+                        </span>
+                      )}
+                      <span style={{
+                        display: 'inline-block', padding: '3px 9px', borderRadius: 20, fontSize: '0.78rem', fontWeight: 600,
+                        background: ex.difficulty === 'EASY' ? '#c6f6d5' : ex.difficulty === 'HARD' ? '#fed7d7' : '#fefcbf',
+                        color: ex.difficulty === 'EASY' ? '#22543d' : ex.difficulty === 'HARD' ? '#822727' : '#744210',
+                      }}>
+                        {ex.difficulty || 'MEDIUM'}
+                      </span>
+                      <span style={{ fontSize: '0.78rem', color: '#a0aec0' }}>v{ex.currentVersionNumber}</span>
+                    </div>
+                  </div>
+                  <button
+                    style={{ ...S.likeBtn, ...(liked[ex.id] ? { background: '#fff5f5', borderColor: '#feb2b2', color: '#e53e3e' } : {}) }}
+                    onClick={e => handleLike(e, ex.id)}
+                    title={liked[ex.id] ? 'Unlike' : 'Like this exercise'}>
+                    {liked[ex.id] ? '❤️' : '🤍'} {ex.likeCount}
+                  </button>
                 </div>
               </div>
-              <button
-                style={{ ...S.likeBtn, ...(liked[ex.id] ? { background: '#fff5f5', borderColor: '#feb2b2', color: '#e53e3e' } : {}) }}
-                onClick={e => handleLike(e, ex.id)}
-                title={liked[ex.id] ? 'Unlike' : 'Like this exercise'}>
-                {liked[ex.id] ? '❤️' : '🤍'} {ex.likeCount}
-              </button>
-            </div>
+            ))}
+            <Pagination
+              totalItems={exercises.length}
+              currentPage={currentPage}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+              onItemsPerPageChange={setItemsPerPage}
+            />
           </div>
-        ))
+        )
       }
     </div>
   );

@@ -520,3 +520,22 @@ function runCode(code) {
   }
 }
 ```
+
+---
+
+### 2026-03-27 — Feature: Frontend Pagination for All Tables and Lists
+
+Added client-side pagination to all tables and lists in the frontend. No backend changes were made.
+
+**Files changed:**
+- `frontend/src/pages/SuperAdminPanel.jsx` — Added `Pagination` component; users table now paginates with `usersPage` / `usersPerPage` state (default 10 per page)
+- `frontend/src/pages/Admin.jsx` — Added `Pagination` component; exercises grid paginates with `exercisesPage` / `exercisesPerPage`; submissions list paginates with `submissionsPage` / `submissionsPerPage`
+- `frontend/src/pages/Home.jsx` — Added `Pagination` component; exercise cards list paginates with `currentPage` / `itemsPerPage`; page resets to 1 when category or difficulty filters change
+
+**Pagination features:**
+- Page size selector: 10 / 25 / 50 / 100 items per page (default 10)
+- Previous / Next navigation buttons (disabled at boundaries)
+- Numbered page buttons with ellipsis for large page counts (shows first, last, and ±2 pages around current)
+- "Showing X–Y of Z items" count text
+- Styled with inline styles consistent with each page's existing indigo/blue color scheme
+- No external CSS libraries used

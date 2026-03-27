@@ -101,6 +101,65 @@ function gradeAspects(aspects, generatedCode, expectedOutput, blocklyState) {
   });
 }
 
+function Pagination({ totalItems, currentPage, itemsPerPage, onPageChange, onItemsPerPageChange }) {
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  if (totalItems === 0) return null;
+  const startItem = (currentPage - 1) * itemsPerPage + 1;
+  const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+
+  const pageNumbers = [];
+  for (let i = 1; i <= totalPages; i++) {
+    if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+      pageNumbers.push(i);
+    }
+  }
+
+  const pagesWithEllipsis = [];
+  let prev = null;
+  for (const p of pageNumbers) {
+    if (prev !== null && p - prev > 1) pagesWithEllipsis.push('...');
+    pagesWithEllipsis.push(p);
+    prev = p;
+  }
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 16, flexWrap: 'wrap', gap: 10 }}>
+      <div style={{ fontSize: '0.83rem', color: '#6b7280' }}>
+        Showing {startItem}–{endItem} of {totalItems} items
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <select
+          value={itemsPerPage}
+          onChange={e => { onItemsPerPageChange(Number(e.target.value)); onPageChange(1); }}
+          style={{ padding: '4px 8px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: '0.82rem', background: '#fff', cursor: 'pointer' }}>
+          {[10, 25, 50, 100].map(n => <option key={n} value={n}>{n} / page</option>)}
+        </select>
+        <button
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          style={{ padding: '4px 10px', border: '1px solid #e2e8f0', borderRadius: 6, background: currentPage === 1 ? '#f9fafb' : '#fff', color: currentPage === 1 ? '#9ca3af' : '#374151', cursor: currentPage === 1 ? 'default' : 'pointer', fontSize: '0.82rem', fontWeight: 600 }}>
+          Previous
+        </button>
+        {pagesWithEllipsis.map((p, i) =>
+          p === '...'
+            ? <span key={`e${i}`} style={{ fontSize: '0.82rem', color: '#9ca3af', padding: '0 2px' }}>...</span>
+            : <button key={p}
+                onClick={() => onPageChange(p)}
+                style={{ padding: '4px 9px', border: '1px solid #e2e8f0', borderRadius: 6, background: p === currentPage ? '#6366f1' : '#fff', color: p === currentPage ? '#fff' : '#374151', cursor: 'pointer', fontSize: '0.82rem', fontWeight: p === currentPage ? 700 : 400 }}>
+                {p}
+              </button>
+        )}
+        <button
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          style={{ padding: '4px 10px', border: '1px solid #e2e8f0', borderRadius: 6, background: currentPage === totalPages ? '#f9fafb' : '#fff', color: currentPage === totalPages ? '#9ca3af' : '#374151', cursor: currentPage === totalPages ? 'default' : 'pointer', fontSize: '0.82rem', fontWeight: 600 }}>
+          Next
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function Admin() {
   const toast = useToast();
   const [tab, setTab] = useState('exercises');
@@ -112,6 +171,10 @@ export default function Admin() {
   const [gradeForm, setGradeForm] = useState({ score: '', comment: '' });
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
+  const [exercisesPage, setExercisesPage] = useState(1);
+  const [exercisesPerPage, setExercisesPerPage] = useState(10);
+  const [submissionsPage, setSubmissionsPage] = useState(1);
+  const [submissionsPerPage, setSubmissionsPerPage] = useState(10);
 
   const loadExercises = () => apiGet('/api/exercises').then(r => r.json()).then(setExercises);
   const loadSubmissions = () => apiGet('/api/submissions').then(r => r.json()).then(setSubmissions);
@@ -244,7 +307,7 @@ export default function Admin() {
                     <div style={{ fontSize: '2.5rem', marginBottom: 8 }}>📭</div>
                     <div style={{ fontWeight: 600 }}>No exercises yet</div>
                   </div>
-                : exercises.map(ex => (
+                : exercises.slice((exercisesPage - 1) * exercisesPerPage, exercisesPage * exercisesPerPage).map(ex => (
                   <div key={ex.id} style={{
                     background: '#fff', borderRadius: 12, padding: '20px',
                     border: '1px solid #e2e8f0',
@@ -291,6 +354,13 @@ export default function Admin() {
                   </div>
                 ))}
             </div>
+            <Pagination
+              totalItems={exercises.length}
+              currentPage={exercisesPage}
+              itemsPerPage={exercisesPerPage}
+              onPageChange={setExercisesPage}
+              onItemsPerPageChange={setExercisesPerPage}
+            />
           </div>
         )}
 
@@ -305,23 +375,32 @@ export default function Admin() {
                   <div style={{ fontSize: '2.5rem', marginBottom: 8 }}>📭</div>
                   <div style={{ fontWeight: 600 }}>No submissions yet</div>
                 </div>
-              : <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {submissions.map(s => (
-                    <div key={s.id} style={{ background: '#fff', borderRadius: 10, padding: '16px 20px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: 16 }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 600, fontSize: '0.92rem', color: '#111827' }}>{s.studentName || 'Unknown'}</div>
-                        <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: 2 }}>{s.exerciseTitle} · <span style={{ fontFamily: 'monospace' }}>{s.sourceFilename}</span></div>
+              : <div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {submissions.slice((submissionsPage - 1) * submissionsPerPage, submissionsPage * submissionsPerPage).map(s => (
+                      <div key={s.id} style={{ background: '#fff', borderRadius: 10, padding: '16px 20px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: 16 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, fontSize: '0.92rem', color: '#111827' }}>{s.studentName || 'Unknown'}</div>
+                          <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: 2 }}>{s.exerciseTitle} · <span style={{ fontFamily: 'monospace' }}>{s.sourceFilename}</span></div>
+                        </div>
+                        <div style={{ fontSize: '0.8rem', color: '#9ca3af', whiteSpace: 'nowrap' }}>{new Date(s.submittedAt).toLocaleDateString()}</div>
+                        <div style={{ minWidth: 80, textAlign: 'right' }}>
+                          {s.tutorScore != null
+                            ? <span style={{ fontWeight: 700, color: '#6366f1' }}>{s.tutorScore}/100</span>
+                            : <span style={{ fontSize: '0.78rem', color: '#d97706', fontWeight: 600, background: '#fef3c7', padding: '2px 8px', borderRadius: 6 }}>Ungraded</span>}
+                        </div>
+                        <button style={{ padding: '7px 16px', border: 'none', borderRadius: 7, background: '#eef2ff', color: '#6366f1', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600, whiteSpace: 'nowrap' }}
+                          onClick={() => openGrade(s)}>{s.tutorScore != null ? 'Re-grade' : 'Grade'}</button>
                       </div>
-                      <div style={{ fontSize: '0.8rem', color: '#9ca3af', whiteSpace: 'nowrap' }}>{new Date(s.submittedAt).toLocaleDateString()}</div>
-                      <div style={{ minWidth: 80, textAlign: 'right' }}>
-                        {s.tutorScore != null
-                          ? <span style={{ fontWeight: 700, color: '#6366f1' }}>{s.tutorScore}/100</span>
-                          : <span style={{ fontSize: '0.78rem', color: '#d97706', fontWeight: 600, background: '#fef3c7', padding: '2px 8px', borderRadius: 6 }}>Ungraded</span>}
-                      </div>
-                      <button style={{ padding: '7px 16px', border: 'none', borderRadius: 7, background: '#eef2ff', color: '#6366f1', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600, whiteSpace: 'nowrap' }}
-                        onClick={() => openGrade(s)}>{s.tutorScore != null ? 'Re-grade' : 'Grade'}</button>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
+                  <Pagination
+                    totalItems={submissions.length}
+                    currentPage={submissionsPage}
+                    itemsPerPage={submissionsPerPage}
+                    onPageChange={setSubmissionsPage}
+                    onItemsPerPageChange={setSubmissionsPerPage}
+                  />
                 </div>}
           </div>
         )}

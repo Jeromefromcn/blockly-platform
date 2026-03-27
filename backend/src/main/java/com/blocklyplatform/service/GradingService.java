@@ -32,7 +32,6 @@ public class GradingService {
     /**
      * Batch import student answer JSON files.
      * Each file must contain: { "exerciseId": n, "blocklyState": {...}, "studentName": "..." }
-     * Optionally: { "generatedCode": "..." } for auto-grading.
      */
     @Transactional
     public List<Map<String, Object>> batchImport(List<MultipartFile> files) {
@@ -45,8 +44,6 @@ public class GradingService {
                 long exerciseId = root.path("exerciseId").asLong();
                 String blocklyStateStr = objectMapper.writeValueAsString(root.path("blocklyState"));
                 String studentName = root.path("studentName").asText(null);
-                String generatedCode = root.path("generatedCode").isMissingNode() ? null
-                        : root.path("generatedCode").asText(null);
 
                 Exercise ex = exerciseRepo.findByIdAndDeletedAtIsNull(exerciseId)
                         .orElseThrow(() -> new RuntimeException("Exercise not found: id=" + exerciseId));
@@ -59,36 +56,12 @@ public class GradingService {
                 submission.setStudentName(studentName);
                 submission.setSourceFilename(filename);
                 submission.setBlocklyState(blocklyStateStr);
-                if (generatedCode != null) submission.setGeneratedCode(generatedCode);
                 submissionRepo.save(submission);
 
                 Map<String, Object> r = new HashMap<>();
                 r.put("filename", filename);
                 r.put("submissionId", submission.getId());
                 r.put("status", "imported");
-
-                // Auto-grade if generatedCode is present
-                if (generatedCode != null && !generatedCode.isBlank()) {
-                    try {
-                        ExerciseVersion version = versionRepo
-                                .findByExerciseIdAndVersionNumber(exerciseId, versionNumber)
-                                .orElse(null);
-                        if (version != null) {
-                            String gradingMode = version.getGradingMode();
-                            String expectedOutput = version.getExpectedOutput();
-                            int autoScore = autoGradingService.grade(generatedCode, gradingMode, expectedOutput);
-
-                            Grade grade = gradeRepo.findBySubmissionId(submission.getId()).orElse(new Grade());
-                            grade.setSubmission(submission);
-                            grade.setAutoScore(autoScore);
-                            gradeRepo.save(grade);
-
-                            r.put("autoScore", autoScore);
-                        }
-                    } catch (Exception e) {
-                        log.warn("Auto-grading failed for file {}: {}", filename, e.getMessage());
-                    }
-                }
 
                 results.add(r);
 
@@ -220,7 +193,6 @@ public class GradingService {
         m.put("sourceFilename", s.getSourceFilename());
         m.put("versionNumber", s.getVersionNumber());
         m.put("blocklyState", s.getBlocklyState());
-        m.put("generatedCode", s.getGeneratedCode());
         m.put("submittedAt", s.getSubmittedAt());
         if (grade != null) {
             m.put("tutorScore", grade.getTutorScore());

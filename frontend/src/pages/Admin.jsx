@@ -171,7 +171,7 @@ export default function Admin() {
 
   // Two-panel grading state
   const [selectedSubmission, setSelectedSubmission] = useState(null); // the selected submission object
-  const [gradingState, setGradingState] = useState(null); // { submissionId, sourceFilename, autoScore, aspectResults, blocklyState, previewOpen, generatedCode, codeOutput, codeOutputOpen, codeRunning }
+  const [gradingState, setGradingState] = useState(null); // { submissionId, sourceFilename, autoScore, aspectResults, blocklyState, previewOpen, codeOutput, codeRunning }
   const [gradeForm, setGradeForm] = useState({ score: '', comment: '' });
   const [savingGrade, setSavingGrade] = useState(false);
   const [showMobilePanel, setShowMobilePanel] = useState('list'); // 'list' or 'form'
@@ -224,7 +224,7 @@ export default function Admin() {
   // Open a submission in the right panel
   const openGrade = async (sub) => {
     setSelectedSubmission(sub);
-    setGradingState({ submissionId: sub.id, sourceFilename: sub.sourceFilename, autoScore: sub.autoScore ?? null, aspectResults: null, blocklyState: null, generatedCode: null, previewOpen: false, codeOutput: null, codeOutputOpen: false, codeRunning: false });
+    setGradingState({ submissionId: sub.id, sourceFilename: sub.sourceFilename, autoScore: sub.autoScore ?? null, aspectResults: null, blocklyState: null, previewOpen: false, codeOutput: null, codeRunning: false });
     setGradeForm({ score: sub.tutorScore ?? '', comment: sub.tutorComment ?? '' });
     setShowMobilePanel('form');
 
@@ -242,14 +242,13 @@ export default function Admin() {
       let aspectResults = [];
       if (gradingMode) {
         const aspects = parseAspects(gradingMode);
-        aspectResults = gradeAspects(aspects, detail.generatedCode, expectedOutput, detail.blocklyState);
+        aspectResults = gradeAspects(aspects, null, expectedOutput, detail.blocklyState);
       }
 
       setGradingState(prev => prev ? {
         ...prev,
         aspectResults,
         blocklyState: detail.blocklyState ?? null,
-        generatedCode: detail.generatedCode ?? null,
       } : prev);
     } catch {}
   };
@@ -290,36 +289,33 @@ export default function Admin() {
     }
   };
 
-  // Execute student code and capture output
+  // Execute student code from blocklyState
   const executeCode = () => {
-    let code = gradingState?.generatedCode;
-
-    // If generatedCode is missing, try to generate from blocklyState
-    if (!code && gradingState?.blocklyState) {
-      try {
-        const Blockly = window.Blockly;
-        if (Blockly && Blockly.serialization && Blockly.serialization.workspaces && Blockly.javascript) {
-          const tempWorkspace = new Blockly.Workspace();
-          const state = typeof gradingState.blocklyState === 'string'
-            ? JSON.parse(gradingState.blocklyState)
-            : gradingState.blocklyState;
-          Blockly.serialization.workspaces.load(state, tempWorkspace);
-          code = Blockly.javascript.workspaceToCode(tempWorkspace);
-          tempWorkspace.dispose();
-        }
-      } catch (err) {
-        setGradingState(prev => prev ? { ...prev, codeOutput: `Error generating code: ${err.message}`, codeRunning: false } : prev);
-        return;
-      }
-    }
-
-    if (!code) {
-      setGradingState(prev => prev ? { ...prev, codeOutput: 'No code to execute' } : prev);
+    if (!gradingState?.blocklyState) {
+      setGradingState(prev => prev ? { ...prev, codeOutput: 'No workspace available' } : prev);
       return;
     }
 
     setGradingState(prev => prev ? { ...prev, codeRunning: true } : prev);
     try {
+      const Blockly = window.Blockly;
+      if (!Blockly || !Blockly.serialization || !Blockly.javascript) {
+        throw new Error('Blockly not available');
+      }
+
+      const tempWorkspace = new Blockly.Workspace();
+      const state = typeof gradingState.blocklyState === 'string'
+        ? JSON.parse(gradingState.blocklyState)
+        : gradingState.blocklyState;
+      Blockly.serialization.workspaces.load(state, tempWorkspace);
+      const code = Blockly.javascript.workspaceToCode(tempWorkspace);
+      tempWorkspace.dispose();
+
+      if (!code || code.trim() === '') {
+        setGradingState(prev => prev ? { ...prev, codeOutput: '(no blocks to execute)', codeRunning: false } : prev);
+        return;
+      }
+
       const logs = [];
       const mockPrint = (...args) => logs.push(args.map(String).join(' '));
       const mockConsole = { log: mockPrint };
@@ -669,17 +665,17 @@ export default function Admin() {
                               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                                 <button
                                   onClick={executeCode}
-                                  disabled={gradingState.codeRunning || (!gradingState.generatedCode && !gradingState.blocklyState)}
+                                  disabled={gradingState.codeRunning || !gradingState.blocklyState}
                                   style={{
-                                    padding: '8px 14px', border: 'none', borderRadius: 6, background: (gradingState.codeRunning || (!gradingState.generatedCode && !gradingState.blocklyState)) ? '#a5b4fc' : '#6366f1',
-                                    color: '#fff', fontWeight: 600, fontSize: '0.82rem', cursor: (gradingState.codeRunning || (!gradingState.generatedCode && !gradingState.blocklyState)) ? 'default' : 'pointer',
+                                    padding: '8px 14px', border: 'none', borderRadius: 6, background: (gradingState.codeRunning || !gradingState.blocklyState) ? '#a5b4fc' : '#6366f1',
+                                    color: '#fff', fontWeight: 600, fontSize: '0.82rem', cursor: (gradingState.codeRunning || !gradingState.blocklyState) ? 'default' : 'pointer',
                                     transition: 'background 0.15s',
                                   }}>
                                   {gradingState.codeRunning ? 'Running...' : '▶ Run Code'}
                                 </button>
-                                {!gradingState.generatedCode && !gradingState.blocklyState && (
+                                {!gradingState.blocklyState && (
                                   <div style={{ padding: 10, borderRadius: 6, background: '#fef3c7', border: '1px solid #fcd34d', color: '#92400e', fontSize: '0.8rem' }}>
-                                    No code or workspace available for this submission
+                                    No workspace available for this submission
                                   </div>
                                 )}
                                 {gradingState.codeOutput !== null && (

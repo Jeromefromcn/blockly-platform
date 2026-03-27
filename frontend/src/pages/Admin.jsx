@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiDelete, apiGet, apiPatch, apiPost } from '../api.js';
 import { useToast } from '../components/Toast.jsx';
+import BlocklyWorkspace from '../components/BlocklyWorkspace.jsx';
 
 const NAV_ITEMS = [
   { key: 'exercises', icon: '📚', label: 'Exercises' },
@@ -167,7 +168,8 @@ export default function Admin() {
   const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [importResults, setImportResults] = useState(null);
-  const [grading, setGrading] = useState(null); // { submissionId, sourceFilename, currentScore, currentComment }
+  const [grading, setGrading] = useState(null); // { submissionId, sourceFilename, autoScore, aspectResults, blocklyState, previewOpen }
+
   const [gradeForm, setGradeForm] = useState({ score: '', comment: '' });
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
@@ -211,7 +213,7 @@ export default function Admin() {
   };
 
   const openGrade = async (sub) => {
-    setGrading({ submissionId: sub.id, sourceFilename: sub.sourceFilename, autoScore: sub.autoScore ?? null, aspectResults: null });
+    setGrading({ submissionId: sub.id, sourceFilename: sub.sourceFilename, autoScore: sub.autoScore ?? null, aspectResults: null, blocklyState: null, previewOpen: false });
     setGradeForm({ score: sub.tutorScore ?? '', comment: sub.tutorComment ?? '' });
 
     try {
@@ -225,13 +227,17 @@ export default function Admin() {
       const gradingMode = exercise.version?.gradingMode;
       const expectedOutput = exercise.version?.expectedOutput;
 
+      let aspectResults = [];
       if (gradingMode) {
         const aspects = parseAspects(gradingMode);
-        const results = gradeAspects(aspects, detail.generatedCode, expectedOutput, detail.blocklyState);
-        setGrading(prev => prev ? { ...prev, aspectResults: results } : prev);
-      } else {
-        setGrading(prev => prev ? { ...prev, aspectResults: [] } : prev);
+        aspectResults = gradeAspects(aspects, detail.generatedCode, expectedOutput, detail.blocklyState);
       }
+
+      setGrading(prev => prev ? {
+        ...prev,
+        aspectResults,
+        blocklyState: detail.blocklyState ?? null,
+      } : prev);
     } catch {}
   };
 
@@ -452,10 +458,42 @@ export default function Admin() {
       {grading && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }}
           onClick={() => setGrading(null)}>
-          <div style={{ background: '#fff', borderRadius: 16, padding: 32, width: 460, boxShadow: '0 20px 60px rgba(0,0,0,0.2)', maxHeight: '80vh', overflowY: 'auto' }}
+          <div style={{ background: '#fff', borderRadius: 16, padding: 32, width: grading.previewOpen ? 760 : 460, boxShadow: '0 20px 60px rgba(0,0,0,0.2)', maxHeight: '90vh', overflowY: 'auto', transition: 'width 0.2s' }}
             onClick={e => e.stopPropagation()}>
             <div style={{ fontWeight: 700, fontSize: '1.1rem', color: '#111827', marginBottom: 4 }}>Grade Submission</div>
             <div style={{ fontSize: '0.82rem', color: '#6b7280', fontFamily: 'monospace', marginBottom: 20 }}>{grading.sourceFilename}</div>
+
+            {/* Blockly Preview Section */}
+            <div style={{ marginBottom: 20, border: '1px solid #e2e8f0', borderRadius: 10, overflow: 'hidden' }}>
+              <button
+                onClick={() => setGrading(prev => prev ? { ...prev, previewOpen: !prev.previewOpen } : prev)}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '10px 14px', border: 'none', background: '#f8fafc', cursor: 'pointer',
+                  fontSize: '0.8rem', fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em',
+                }}>
+                <span>Blockly Preview</span>
+                <span style={{ fontSize: '0.9rem', color: '#6b7280' }}>{grading.previewOpen ? '▲ Collapse' : '▼ Expand'}</span>
+              </button>
+              {grading.previewOpen && (
+                <div style={{ padding: 12 }}>
+                  {grading.blocklyState ? (
+                    <div style={{ width: '100%', height: 400, borderRadius: 6, overflow: 'hidden' }}>
+                      <BlocklyWorkspace
+                        readOnly={true}
+                        initialState={grading.blocklyState}
+                      />
+                    </div>
+                  ) : (
+                    <div style={{ padding: 16, color: '#6b7280', textAlign: 'center', fontStyle: 'italic', fontSize: '0.85rem' }}>
+                      {grading.blocklyState === null && grading.aspectResults === null
+                        ? 'Loading workspace...'
+                        : 'No workspace saved for this submission'}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             {grading.aspectResults === null && (
               <div style={{ fontSize: '0.82rem', color: '#9ca3af', marginBottom: 16 }}>Loading grading results...</div>

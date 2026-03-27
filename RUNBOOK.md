@@ -404,6 +404,21 @@ CREATE TABLE IF NOT EXISTS role_permissions (
 
 ## 13. Changelog
 
+### 2026-03-27 — Feature: Blockly Preview in Grade Submission Modal (#11)
+
+Added a collapsible read-only Blockly workspace preview inside the Grade Submission modal so tutors can visually inspect student block arrangements while grading.
+
+**Files changed:**
+- `frontend/src/pages/Admin.jsx` — Imported `BlocklyWorkspace`; added `blocklyState` and `previewOpen` fields to grading state; updated `openGrade` to fetch and store `detail.blocklyState`; added collapsible "Blockly Preview" section above grading results in the modal — renders a read-only `BlocklyWorkspace` with the student's saved JSON state when expanded; modal widens from 460 px to 760 px when preview is open
+
+**Behavior:**
+- A "Blockly Preview" header row with an Expand/Collapse toggle appears at the top of the Grade modal
+- Clicking "Expand" reveals a 400 px tall read-only Blockly workspace loaded with the student's saved block state (JSON serialization)
+- If no workspace state exists for the submission, a "No workspace saved for this submission" message is shown
+- No backend changes required — `blocklyState` was already returned by `GET /api/submissions/{id}`
+
+---
+
 ### 2026-03-22 — Refactor: Translate Chinese in index.html to English
 
 **Files changed:**

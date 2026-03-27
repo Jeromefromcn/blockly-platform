@@ -404,22 +404,22 @@ CREATE TABLE IF NOT EXISTS role_permissions (
 
 ## 13. Changelog
 
-### 2026-03-27 — Feature: Code Execution in Grading Panel
+### 2026-03-27 — Feature: Code Execution in Blockly Preview
 
-Added a "Code Execution" collapsible section in the grading panel (right panel in the Submissions tab) that allows tutors to run the student's generated code and see the output.
+Added code execution capability to the "Blockly Preview" section in the grading panel (right panel in the Submissions tab). Tutors can now run the student's generated code and see the output directly.
 
 **Files changed:**
-- `frontend/src/pages/Admin.jsx` — Added collapsible "Code Execution" section below the Blockly Preview section. Shows a "▶ Run Code" button that executes `detail.generatedCode` in a sandbox. Output is displayed in a monospace box. The feature captures `console.log()` and custom `print()` calls.
+- `frontend/src/pages/Admin.jsx` — Extended the "Blockly Preview" collapsible section to include a "▶ Run Code" button below the visual workspace. The button executes `detail.generatedCode` in a sandbox. Output is displayed in a monospace box below the button. The feature captures `console.log()` and custom `print()` calls.
 
 **State changes:**
-- Extended `gradingState` with new fields: `generatedCode`, `codeOutput`, `codeOutputOpen`, `codeRunning`
+- Extended `gradingState` with new fields: `generatedCode`, `codeOutput`, `codeRunning`
 - `openGrade()` now fetches and stores the submission's `generatedCode`
 - Added `executeCode()` function that runs the code and captures output
 
 **UX features:**
-- Collapsible panel (expand/collapse toggle)
-- "Run Code" button (disabled while executing, shows "Running...")
-- Output displayed in a gray box with monospace font
+- Single "Blockly Preview" section contains: visual workspace + "Run Code" button + output display
+- "Run Code" button disabled while executing, shows "Running..."
+- Output displayed in a gray monospace box with automatic scrolling for long output
 - Handles errors gracefully (shows "Error: ..." in output)
 - Shows "(no output)" if the code produces no output
 - Shows "No code generated for this submission" if `generatedCode` is null

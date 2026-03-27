@@ -171,7 +171,7 @@ export default function Admin() {
 
   // Two-panel grading state
   const [selectedSubmission, setSelectedSubmission] = useState(null); // the selected submission object
-  const [gradingState, setGradingState] = useState(null); // { submissionId, sourceFilename, autoScore, aspectResults, blocklyState, previewOpen }
+  const [gradingState, setGradingState] = useState(null); // { submissionId, sourceFilename, autoScore, aspectResults, blocklyState, previewOpen, generatedCode, codeOutput, codeOutputOpen, codeRunning }
   const [gradeForm, setGradeForm] = useState({ score: '', comment: '' });
   const [savingGrade, setSavingGrade] = useState(false);
   const [showMobilePanel, setShowMobilePanel] = useState('list'); // 'list' or 'form'
@@ -224,7 +224,7 @@ export default function Admin() {
   // Open a submission in the right panel
   const openGrade = async (sub) => {
     setSelectedSubmission(sub);
-    setGradingState({ submissionId: sub.id, sourceFilename: sub.sourceFilename, autoScore: sub.autoScore ?? null, aspectResults: null, blocklyState: null, previewOpen: false });
+    setGradingState({ submissionId: sub.id, sourceFilename: sub.sourceFilename, autoScore: sub.autoScore ?? null, aspectResults: null, blocklyState: null, generatedCode: null, previewOpen: false, codeOutput: null, codeOutputOpen: false, codeRunning: false });
     setGradeForm({ score: sub.tutorScore ?? '', comment: sub.tutorComment ?? '' });
     setShowMobilePanel('form');
 
@@ -249,6 +249,7 @@ export default function Admin() {
         ...prev,
         aspectResults,
         blocklyState: detail.blocklyState ?? null,
+        generatedCode: detail.generatedCode ?? null,
       } : prev);
     } catch {}
   };
@@ -286,6 +287,29 @@ export default function Admin() {
       }
     } finally {
       setSavingGrade(false);
+    }
+  };
+
+  // Execute student code and capture output
+  const executeCode = () => {
+    if (!gradingState?.generatedCode) {
+      setGradingState(prev => prev ? { ...prev, codeOutput: 'No code to execute' } : prev);
+      return;
+    }
+
+    setGradingState(prev => prev ? { ...prev, codeRunning: true } : prev);
+    try {
+      const logs = [];
+      const mockPrint = (...args) => logs.push(args.map(String).join(' '));
+      const mockConsole = { log: mockPrint };
+
+      const fn = new Function('console', 'print', gradingState.generatedCode);
+      fn(mockConsole, mockPrint);
+
+      const output = logs.length > 0 ? logs.join('\n') : '(no output)';
+      setGradingState(prev => prev ? { ...prev, codeOutput: output, codeRunning: false } : prev);
+    } catch (err) {
+      setGradingState(prev => prev ? { ...prev, codeOutput: `Error: ${err.message}`, codeRunning: false } : prev);
     }
   };
 
@@ -625,6 +649,53 @@ export default function Admin() {
                               {gradingState.blocklyState === null && gradingState.aspectResults === null
                                 ? 'Loading workspace...'
                                 : 'No workspace saved for this submission'}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Code Execution */}
+                    <div style={{ marginBottom: 20, border: '1px solid #e2e8f0', borderRadius: 10, overflow: 'hidden' }}>
+                      <button
+                        onClick={() => setGradingState(prev => prev ? { ...prev, codeOutputOpen: !prev.codeOutputOpen } : prev)}
+                        style={{
+                          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          padding: '10px 14px', border: 'none', background: '#f8fafc', cursor: 'pointer',
+                          fontSize: '0.8rem', fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em',
+                        }}>
+                        <span>Code Execution</span>
+                        <span style={{ fontSize: '0.9rem', color: '#6b7280' }}>
+                          {gradingState?.codeOutputOpen ? '▲ Collapse' : '▼ Expand'}
+                        </span>
+                      </button>
+                      {gradingState?.codeOutputOpen && (
+                        <div style={{ padding: 12 }}>
+                          {gradingState.generatedCode ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                              <button
+                                onClick={executeCode}
+                                disabled={gradingState.codeRunning}
+                                style={{
+                                  padding: '8px 14px', border: 'none', borderRadius: 6, background: gradingState.codeRunning ? '#a5b4fc' : '#6366f1',
+                                  color: '#fff', fontWeight: 600, fontSize: '0.82rem', cursor: gradingState.codeRunning ? 'default' : 'pointer',
+                                  transition: 'background 0.15s',
+                                }}>
+                                {gradingState.codeRunning ? 'Running...' : '▶ Run Code'}
+                              </button>
+                              {gradingState.codeOutput !== null && (
+                                <div style={{
+                                  padding: 10, borderRadius: 6, background: '#f3f4f6', border: '1px solid #d1d5db',
+                                  fontFamily: 'monospace', fontSize: '0.8rem', color: '#1f2937', maxHeight: 200, overflowY: 'auto',
+                                  whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: '1.4',
+                                }}>
+                                  {gradingState.codeOutput}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div style={{ padding: 16, color: '#6b7280', textAlign: 'center', fontStyle: 'italic', fontSize: '0.85rem' }}>
+                              No code generated for this submission
                             </div>
                           )}
                         </div>

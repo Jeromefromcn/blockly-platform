@@ -404,6 +404,30 @@ CREATE TABLE IF NOT EXISTS role_permissions (
 
 ## 13. Changelog
 
+### 2026-03-27 — Feature: Code Execution in Grading Panel
+
+Added a "Code Execution" collapsible section in the grading panel (right panel in the Submissions tab) that allows tutors to run the student's generated code and see the output.
+
+**Files changed:**
+- `frontend/src/pages/Admin.jsx` — Added collapsible "Code Execution" section below the Blockly Preview section. Shows a "▶ Run Code" button that executes `detail.generatedCode` in a sandbox. Output is displayed in a monospace box. The feature captures `console.log()` and custom `print()` calls.
+
+**State changes:**
+- Extended `gradingState` with new fields: `generatedCode`, `codeOutput`, `codeOutputOpen`, `codeRunning`
+- `openGrade()` now fetches and stores the submission's `generatedCode`
+- Added `executeCode()` function that runs the code and captures output
+
+**UX features:**
+- Collapsible panel (expand/collapse toggle)
+- "Run Code" button (disabled while executing, shows "Running...")
+- Output displayed in a gray box with monospace font
+- Handles errors gracefully (shows "Error: ..." in output)
+- Shows "(no output)" if the code produces no output
+- Shows "No code generated for this submission" if `generatedCode` is null
+
+**No backend changes required** — `generatedCode` was already stored and returned by the API.
+
+---
+
 ### 2026-03-27 — Feature: Bulk Grading UI with Two-Panel Layout (#9)
 
 Redesigned the Submissions tab in the Admin panel from a vertical card list + modal approach into an efficient two-panel bulk grading interface.

@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import * as Blockly from 'blockly';
+import { javascriptGenerator } from 'blockly/javascript';
 import { apiDelete, apiGet, apiPatch, apiPost } from '../api.js';
 import { useToast } from '../components/Toast.jsx';
 import BlocklyWorkspace from '../components/BlocklyWorkspace.jsx';
@@ -298,17 +300,12 @@ export default function Admin() {
 
     setGradingState(prev => prev ? { ...prev, codeRunning: true } : prev);
     try {
-      const Blockly = window.Blockly;
-      if (!Blockly || !Blockly.serialization || !Blockly.javascript) {
-        throw new Error('Blockly not available');
-      }
-
       const tempWorkspace = new Blockly.Workspace();
       const state = typeof gradingState.blocklyState === 'string'
         ? JSON.parse(gradingState.blocklyState)
         : gradingState.blocklyState;
       Blockly.serialization.workspaces.load(state, tempWorkspace);
-      const code = Blockly.javascript.workspaceToCode(tempWorkspace);
+      const code = javascriptGenerator.workspaceToCode(tempWorkspace);
       tempWorkspace.dispose();
 
       if (!code || code.trim() === '') {
@@ -605,12 +602,11 @@ export default function Admin() {
                 <>
                   {/* Grading panel header */}
                   <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', flexShrink: 0, background: '#fafafa' }}>
-                    {/* Mobile back button */}
+                    {/* Back button */}
                     <button
-                      onClick={() => { setShowMobilePanel('list'); }}
-                      style={{ display: 'none', marginBottom: 10, padding: '6px 12px', border: '1px solid #e2e8f0', borderRadius: 7, background: '#fff', color: '#4b5563', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600 }}
-                      className="mobile-back-btn">
-                      &larr; Back to list
+                      onClick={() => { setSelectedSubmission(null); setGradingState(null); setShowMobilePanel('list'); }}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 10, padding: '5px 12px', border: '1px solid #e2e8f0', borderRadius: 7, background: '#fff', color: '#4b5563', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600 }}>
+                      ← Back to list
                     </button>
                     <div style={{ fontWeight: 700, fontSize: '1rem', color: '#111827', marginBottom: 2 }}>
                       {selectedSubmission.studentName || 'Unknown'}

@@ -292,7 +292,28 @@ export default function Admin() {
 
   // Execute student code and capture output
   const executeCode = () => {
-    if (!gradingState?.generatedCode) {
+    let code = gradingState?.generatedCode;
+
+    // If generatedCode is missing, try to generate from blocklyState
+    if (!code && gradingState?.blocklyState) {
+      try {
+        const Blockly = window.Blockly;
+        if (Blockly && Blockly.serialization && Blockly.serialization.workspaces && Blockly.javascript) {
+          const tempWorkspace = new Blockly.Workspace();
+          const state = typeof gradingState.blocklyState === 'string'
+            ? JSON.parse(gradingState.blocklyState)
+            : gradingState.blocklyState;
+          Blockly.serialization.workspaces.load(state, tempWorkspace);
+          code = Blockly.javascript.workspaceToCode(tempWorkspace);
+          tempWorkspace.dispose();
+        }
+      } catch (err) {
+        setGradingState(prev => prev ? { ...prev, codeOutput: `Error generating code: ${err.message}`, codeRunning: false } : prev);
+        return;
+      }
+    }
+
+    if (!code) {
       setGradingState(prev => prev ? { ...prev, codeOutput: 'No code to execute' } : prev);
       return;
     }
@@ -303,7 +324,7 @@ export default function Admin() {
       const mockPrint = (...args) => logs.push(args.map(String).join(' '));
       const mockConsole = { log: mockPrint };
 
-      const fn = new Function('console', 'print', gradingState.generatedCode);
+      const fn = new Function('console', 'print', code);
       fn(mockConsole, mockPrint);
 
       const output = logs.length > 0 ? logs.join('\n') : '(no output)';
@@ -648,17 +669,17 @@ export default function Admin() {
                               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                                 <button
                                   onClick={executeCode}
-                                  disabled={gradingState.codeRunning || !gradingState.generatedCode}
+                                  disabled={gradingState.codeRunning || (!gradingState.generatedCode && !gradingState.blocklyState)}
                                   style={{
-                                    padding: '8px 14px', border: 'none', borderRadius: 6, background: (gradingState.codeRunning || !gradingState.generatedCode) ? '#a5b4fc' : '#6366f1',
-                                    color: '#fff', fontWeight: 600, fontSize: '0.82rem', cursor: (gradingState.codeRunning || !gradingState.generatedCode) ? 'default' : 'pointer',
+                                    padding: '8px 14px', border: 'none', borderRadius: 6, background: (gradingState.codeRunning || (!gradingState.generatedCode && !gradingState.blocklyState)) ? '#a5b4fc' : '#6366f1',
+                                    color: '#fff', fontWeight: 600, fontSize: '0.82rem', cursor: (gradingState.codeRunning || (!gradingState.generatedCode && !gradingState.blocklyState)) ? 'default' : 'pointer',
                                     transition: 'background 0.15s',
                                   }}>
                                   {gradingState.codeRunning ? 'Running...' : '▶ Run Code'}
                                 </button>
-                                {!gradingState.generatedCode && (
+                                {!gradingState.generatedCode && !gradingState.blocklyState && (
                                   <div style={{ padding: 10, borderRadius: 6, background: '#fef3c7', border: '1px solid #fcd34d', color: '#92400e', fontSize: '0.8rem' }}>
-                                    No generated code available for this submission
+                                    No code or workspace available for this submission
                                   </div>
                                 )}
                                 {gradingState.codeOutput !== null && (

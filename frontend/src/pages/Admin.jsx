@@ -501,8 +501,8 @@ export default function Admin() {
 
             {/* Left Panel: Submission List */}
             <div style={{
-              flex: '0 0 clamp(260px, 35%, 420px)',
-              display: showMobilePanel === 'form' && selectedSubmission ? 'none' : 'flex',
+              flex: '0 0 320px',
+              display: 'flex',
               flexDirection: 'column',
               background: '#fff',
               borderRadius: '12px 0 0 12px',
@@ -575,10 +575,10 @@ export default function Admin() {
               </div>
             </div>
 
-            {/* Right Panel: Grading Form (~60%) */}
+            {/* Right Panel: Grading Form */}
             <div style={{
               flex: 1,
-              display: showMobilePanel === 'list' && !selectedSubmission ? 'none' : 'flex',
+              display: 'flex',
               flexDirection: 'column',
               background: '#fff',
               borderRadius: '0 12px 12px 0',

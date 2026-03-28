@@ -170,3 +170,12 @@ A chronological record of bugs and issues encountered in this project, including
 - **Files Changed**: `frontend/src/pages/Admin.jsx`
 
 ---
+
+### [2026-03-28] /progress page always redirects to login when already authenticated
+
+- **Symptom**: Navigating to `/progress` redirected to `/login` even when the user was logged in
+- **Root Cause**: `AuthContext.fetchMe()` used `apiGet('/api/auth/me')`. The `api.js` helper redirects to `/login` on any 401 response — including session checks. On a full page reload, if the token was expired or absent, the redirect fired immediately from inside the API helper before `ProtectedRoute` could handle it gracefully
+- **Fix**: Changed `fetchMe` to use raw `fetch('/api/auth/me', { credentials: 'include' })` instead of `apiGet`. A 401 now silently sets `user: null`; `ProtectedRoute` handles the redirect cleanly with no forced loop
+- **Files Changed**: `frontend/src/context/AuthContext.jsx`
+
+---

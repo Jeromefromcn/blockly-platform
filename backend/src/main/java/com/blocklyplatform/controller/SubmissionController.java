@@ -5,8 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -61,11 +60,11 @@ public class SubmissionController {
      * Returns all submissions for the currently authenticated student (matched by username = studentName).
      */
     @GetMapping("/submissions/mine")
-    public ResponseEntity<?> getMySubmissions(@AuthenticationPrincipal UserDetails userDetails) {
-        if (userDetails == null) {
+    public ResponseEntity<?> getMySubmissions(Authentication auth) {
+        if (auth == null || !auth.isAuthenticated()) {
             return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
         }
-        return ResponseEntity.ok(gradingService.getMySubmissions(userDetails.getUsername()));
+        return ResponseEntity.ok(gradingService.getMySubmissions((String) auth.getPrincipal()));
     }
 
     @GetMapping("/submissions")

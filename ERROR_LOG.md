@@ -179,3 +179,12 @@ A chronological record of bugs and issues encountered in this project, including
 - **Files Changed**: `frontend/src/context/AuthContext.jsx`
 
 ---
+
+### [2026-03-28] /progress page redirects to login — @AuthenticationPrincipal type mismatch
+
+- **Symptom**: `/progress` briefly flashed then redirected to `/login` even when the user was authenticated
+- **Root Cause**: `GET /api/submissions/mine` used `@AuthenticationPrincipal UserDetails userDetails`. The JWT filter stores the principal as a plain `String`, not a `UserDetails` object. Spring Security injected `null`, the endpoint returned 401, and `apiGet` in `Progress.jsx` triggered a redirect to `/login`
+- **Fix**: Changed the method signature to use `Authentication auth` and cast `auth.getPrincipal()` to `String` — the same pattern used by `/api/auth/me`
+- **Files Changed**: `backend/src/main/java/com/blocklyplatform/controller/SubmissionController.java`
+
+---

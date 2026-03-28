@@ -134,3 +134,39 @@ A chronological record of bugs and issues encountered in this project, including
 - **Files Changed**: `backend/src/main/resources/db/migration/V3__Widen_grading_mode_to_text.sql`
 
 ---
+
+### [2026-03-27] "Run Code" button not appearing in grading panel
+
+- **Symptom**: Clicking "▶ Expand" in Blockly Preview showed the visual workspace but no "Run Code" button
+- **Root Cause**: Button was conditionally rendered only when `gradingState.generatedCode` was truthy. Existing submissions had `generatedCode = null` in the database because the field was optional during import
+- **Fix**: Changed condition to always render the button; disabled it only when both `generatedCode` and `blocklyState` are absent. Also added fallback to generate code from `blocklyState` at runtime
+- **Files Changed**: `frontend/src/pages/Admin.jsx`
+
+---
+
+### [2026-03-27] "No generated code available" warning shown despite visible blocks
+
+- **Symptom**: Grading panel showed yellow warning "No generated code available" even though the Blockly workspace had visible blocks
+- **Root Cause**: `generatedCode` was not stored for most submissions (optional field, not always included in imported JSON). The warning incorrectly treated missing `generatedCode` as "no code" rather than checking `blocklyState`
+- **Fix**: Removed the separate `generatedCode` field entirely. `executeCode()` now generates JavaScript on-the-fly from `blocklyState` using `Blockly.serialization` + `javascriptGenerator`
+- **Files Changed**: `backend/src/main/java/com/blocklyplatform/entity/Submission.java`, `backend/src/main/java/com/blocklyplatform/service/GradingService.java`, `backend/src/main/resources/db/migration/V5__Remove_generated_code_from_submissions.sql`, `frontend/src/pages/Admin.jsx`
+
+---
+
+### [2026-03-28] "Error: Blockly not available" when clicking Run Code
+
+- **Symptom**: Clicking "▶ Run Code" in the grading panel showed `Error: Blockly not available` in the output box
+- **Root Cause**: `executeCode()` accessed `window.Blockly` which does not exist — Blockly is bundled as an ES module (not a browser global) in this Vite project
+- **Fix**: Added `import * as Blockly from 'blockly'` and `import { javascriptGenerator } from 'blockly/javascript'` to Admin.jsx; replaced `window.Blockly` references with the imported modules
+- **Files Changed**: `frontend/src/pages/Admin.jsx`
+
+---
+
+### [2026-03-28] Back button hidden in grading panel
+
+- **Symptom**: After selecting a submission, there was no way to return to the submission list; the page appeared stuck
+- **Root Cause**: The "← Back to list" button had `display: none` inline style — it was a leftover mobile-only stub intended to be shown via a CSS class that was never implemented
+- **Fix**: Changed to `display: inline-flex`; button now always visible. Click also clears `selectedSubmission` and `gradingState` to reset the right panel to placeholder state
+- **Files Changed**: `frontend/src/pages/Admin.jsx`
+
+---

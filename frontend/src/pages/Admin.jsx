@@ -327,10 +327,10 @@ export default function Admin() {
     }
   };
 
-  // Apply exercise and status filters to a submissions array
+  // Apply exercise keyword and status filters to a submissions array
   const applyFilters = (subs) => {
     let result = subs;
-    if (filterExercise) result = result.filter(s => String(s.exerciseId) === filterExercise);
+    if (filterExercise.trim()) result = result.filter(s => s.exerciseTitle?.toLowerCase().includes(filterExercise.trim().toLowerCase()));
     if (filterStatus === 'Ungraded') result = result.filter(s => s.tutorScore == null);
     if (filterStatus === 'Graded') result = result.filter(s => s.tutorScore != null);
     return result;
@@ -342,11 +342,6 @@ export default function Admin() {
   const pagedSubmissions = filteredSubmissions.slice(
     (submissionsPage - 1) * submissionsPerPage,
     submissionsPage * submissionsPerPage
-  );
-
-  // Get unique exercises from submissions for the filter dropdown
-  const exerciseOptions = Array.from(
-    new Map(submissions.map(s => [s.exerciseId, s.exerciseTitle])).entries()
   );
 
   if (loading) return <div style={{ padding: 40, fontFamily: 'Inter, sans-serif' }}>Loading...</div>;
@@ -470,54 +465,54 @@ export default function Admin() {
 
         {/* Submissions Tab — Two-Panel Bulk Grading UI */}
         {tab === 'submissions' && (
-          <div style={{ display: 'flex', gap: 0, height: 'calc(100vh - 220px)', minHeight: 500 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 220px)', minHeight: 500 }}>
 
-            {/* Left Panel: Submission List (~40%) */}
+            {/* Filter bar — full width, above panels */}
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
+              <input
+                type="text"
+                placeholder="Search by exercise title..."
+                value={filterExercise}
+                onChange={e => { setFilterExercise(e.target.value); setSubmissionsPage(1); }}
+                style={{ flex: '1 1 260px', padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: '0.85rem', outline: 'none', background: '#fff' }}
+              />
+              <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                {['All', 'Ungraded', 'Graded'].map(status => (
+                  <button key={status}
+                    onClick={() => { setFilterStatus(status); setSubmissionsPage(1); }}
+                    style={{
+                      padding: '7px 16px', border: 'none', borderRadius: 7, cursor: 'pointer',
+                      fontSize: '0.82rem', fontWeight: 600,
+                      background: filterStatus === status ? '#6366f1' : '#f1f5f9',
+                      color: filterStatus === status ? '#fff' : '#6b7280',
+                      transition: 'all 0.15s',
+                    }}>
+                    {status}
+                  </button>
+                ))}
+              </div>
+              <span style={{ fontSize: '0.8rem', color: '#9ca3af', flexShrink: 0 }}>
+                {filteredSubmissions.length} submission{filteredSubmissions.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+
+            {/* Two-panel row */}
+            <div style={{ display: 'flex', flex: 1, gap: 0, overflow: 'hidden' }}>
+
+            {/* Left Panel: Submission List */}
             <div style={{
-              width: '40%',
-              minWidth: 280,
+              flex: '0 0 clamp(260px, 35%, 420px)',
               display: showMobilePanel === 'form' && selectedSubmission ? 'none' : 'flex',
               flexDirection: 'column',
               background: '#fff',
               borderRadius: '12px 0 0 12px',
               border: '1px solid #e2e8f0',
               overflow: 'hidden',
-              flexShrink: 0,
             }}>
               {/* List header */}
-              <div style={{ padding: '16px 16px 12px', borderBottom: '1px solid #e2e8f0', flexShrink: 0 }}>
-                <div style={{ fontSize: '1rem', fontWeight: 700, color: '#111827', marginBottom: 12 }}>
+              <div style={{ padding: '12px 14px', borderBottom: '1px solid #e2e8f0', flexShrink: 0 }}>
+                <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#111827' }}>
                   Submissions
-                  <span style={{ marginLeft: 8, fontSize: '0.78rem', fontWeight: 600, color: '#6b7280' }}>
-                    ({filteredSubmissions.length} shown)
-                  </span>
-                </div>
-                {/* Filter bar */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <select
-                    value={filterExercise}
-                    onChange={e => { setFilterExercise(e.target.value); setSubmissionsPage(1); }}
-                    style={{ width: '100%', padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: 7, fontSize: '0.82rem', background: '#f8fafc', color: '#374151', cursor: 'pointer' }}>
-                    <option value="">All Exercises</option>
-                    {exerciseOptions.map(([id, title]) => (
-                      <option key={id} value={String(id)}>{title}</option>
-                    ))}
-                  </select>
-                  <div style={{ display: 'flex', gap: 4 }}>
-                    {['All', 'Ungraded', 'Graded'].map(status => (
-                      <button key={status}
-                        onClick={() => { setFilterStatus(status); setSubmissionsPage(1); }}
-                        style={{
-                          flex: 1, padding: '5px 0', border: 'none', borderRadius: 6, cursor: 'pointer',
-                          fontSize: '0.78rem', fontWeight: 600,
-                          background: filterStatus === status ? '#6366f1' : '#f1f5f9',
-                          color: filterStatus === status ? '#fff' : '#6b7280',
-                          transition: 'all 0.15s',
-                        }}>
-                        {status}
-                      </button>
-                    ))}
-                  </div>
                 </div>
               </div>
 
@@ -750,6 +745,7 @@ export default function Admin() {
                   </div>
                 </>
               )}
+            </div>
             </div>
           </div>
         )}

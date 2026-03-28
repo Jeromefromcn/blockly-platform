@@ -404,27 +404,41 @@ CREATE TABLE IF NOT EXISTS role_permissions (
 
 ## 13. Changelog
 
-### 2026-03-27 — Feature: Code Execution in Blockly Preview
-
-Added code execution capability to the "Blockly Preview" section in the grading panel (right panel in the Submissions tab). Tutors can now run the student's generated code and see the output directly.
+### 2026-03-28 — Fix: Blockly import and back button in grading panel
 
 **Files changed:**
-- `frontend/src/pages/Admin.jsx` — Extended the "Blockly Preview" collapsible section to include a "▶ Run Code" button below the visual workspace. The button executes `detail.generatedCode` in a sandbox. Output is displayed in a monospace box below the button. The feature captures `console.log()` and custom `print()` calls.
+- `frontend/src/pages/Admin.jsx`
 
-**State changes:**
-- Extended `gradingState` with new fields: `generatedCode`, `codeOutput`, `codeRunning`
-- `openGrade()` now fetches and stores the submission's `generatedCode`
-- Added `executeCode()` function that runs the code and captures output
+**Fixes:**
+- `executeCode()` was using `window.Blockly` which doesn't exist; now imports `* as Blockly` and `{ javascriptGenerator }` as ES modules (same as BlocklyWorkspace component)
+- Back button in grading panel had `display: none` (leftover mobile-only stub); now always visible and deselects the current submission on click
 
-**UX features:**
-- Single "Blockly Preview" section contains: visual workspace + "Run Code" button + output display
-- "Run Code" button disabled while executing, shows "Running..."
-- Output displayed in a gray monospace box with automatic scrolling for long output
-- Handles errors gracefully (shows "Error: ..." in output)
-- Shows "(no output)" if the code produces no output
-- Shows "No code generated for this submission" if `generatedCode` is null
+---
 
-**No backend changes required** — `generatedCode` was already stored and returned by the API.
+### 2026-03-27 — Refactor: Remove generatedCode field
+
+Removed the `generatedCode` field from the entire system. Code is now generated on-the-fly from `blocklyState` when the tutor clicks "Run Code" in the grading panel.
+
+**Files changed:**
+- `backend/src/main/java/com/blocklyplatform/entity/Submission.java` — Removed `generatedCode` field
+- `backend/src/main/java/com/blocklyplatform/service/GradingService.java` — Removed reading/storing/returning `generatedCode`; removed auto-grading block that depended on it
+- `backend/src/main/resources/db/migration/V5__Remove_generated_code_from_submissions.sql` — New migration: `ALTER TABLE submissions DROP COLUMN generated_code`
+- `frontend/src/pages/Admin.jsx` — `executeCode()` now generates code from `blocklyState` at runtime using `Blockly.serialization` + `javascriptGenerator`; removed all `generatedCode` state
+
+**Why:** Submission JSON exported by students already contains `blocklyState`. Storing `generatedCode` separately was redundant — the same code can always be regenerated from blocks. Removing it simplifies the data model.
+
+---
+
+### 2026-03-27 — Feature: Code Execution in Blockly Preview
+
+Added a "▶ Run Code" button inside the "Blockly Preview" collapsible section in the grading panel. Tutors can run the student's code and see output without leaving the grading view.
+
+**Files changed:**
+- `frontend/src/pages/Admin.jsx` — Added `executeCode()` function; extended `gradingState` with `codeOutput` and `codeRunning`; Run Code button + monospace output panel added inside the Blockly Preview section
+
+**UX:**
+- Button disabled until `blocklyState` is loaded
+- Output shown in a scrollable monospace box; shows `(no output)` or `Error: ...` as appropriate
 
 ---
 

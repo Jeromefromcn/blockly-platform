@@ -1,9 +1,16 @@
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+## Tech Stack
+- Language: Java 17 + Spring Boot 3.2
+- Database: MySQL 8.0
+- Build Tool: Maven
+- Test Framework: JUnit 5 + Mockito
+- Frontend: React 18 + Blockly 12.5.0 + TypeScript 5
+- Deployment: Docker + Docker Compose
+- Monitoring: Prometheus (9090) + Grafana (3001)
 
 ## Commands
-
 ### Development
 
 ```bash
@@ -38,6 +45,32 @@ mvn clean package          # Build JAR
 mvn test                   # Run all 45 unit tests
 mvn test -Dtest=ClassName  # Run a single test class
 ```
+
+### Core Development Rules
+#### Code Style
+- All public methods must be clearly named and self-explanatory
+- Methods must not exceed 40 lines; classes must not exceed 300 lines
+- Use DTOs instead of exposing entities directly
+- Exception handling: use custom exceptions for business errors; let system exceptions propagate
+- No Chinese in code, comments, or strings
+
+#### Testing Requirements
+- Every Service method must have at least three tests: happy path, boundary condition, and exception path
+- Test naming: `should_[expected behavior]_when_[condition]`
+- Mock external dependencies; do not mock the class under test
+- The backend currently has 45 unit tests — new features must include corresponding tests
+
+#### Security Rules
+- Never hardcode passwords or secrets
+- Validate and sanitize all user input
+- Use parameterized queries for all SQL; never concatenate strings
+- Database migrations use Flyway — never edit existing migration files
+
+#### Git Conventions
+- Commit message format: `type(scope): description`
+- Types: feat | fix | refactor | test | docs | chore
+- One logical change per commit
+- Develop on the `develop` branch; push after each task; merge to `main` only on user confirmation
 
 ## Architecture
 
@@ -90,3 +123,11 @@ The Vite dev config (`vite.config.js`) proxies `/api` to `http://localhost:8081`
 - `ERROR_LOG.md` — Chronological bug log; read before debugging recurring issues.
 - `dev-log/` — Per-date development notes.
 - `TODO.md` — Pending and completed features.
+
+## Prohibited Actions
+- Do not modify files under .github/
+- Do not write directly to the production database (queries only)
+- Do not use @Autowired field injection; use constructor injection
+- Do not modify tests just to make them pass
+- Do not delete data in Docker Volumes
+- Do not edit existing Flyway migration files (V*.sql)

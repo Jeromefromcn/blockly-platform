@@ -32,3 +32,6 @@ docker-compose.override.yml
 # Spring Boot local config overrides
 application-local.yml
 application-local.properties
+
+.claude/settings.local.json
+.claude/worktrees/

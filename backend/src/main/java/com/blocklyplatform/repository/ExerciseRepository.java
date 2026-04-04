@@ -21,4 +21,22 @@ public interface ExerciseRepository extends JpaRepository<Exercise, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT e FROM Exercise e WHERE e.id = :id AND e.deletedAt IS NULL")
     Optional<Exercise> findByIdForUpdate(@Param("id") Long id);
+
+    @Query("SELECT e FROM Exercise e WHERE e.status = 'PUBLISHED' AND e.deletedAt IS NULL " +
+           "AND (:category IS NULL OR e.category = :category) " +
+           "AND (:difficulty IS NULL OR e.difficulty = :difficulty) " +
+           "ORDER BY e.createdAt ASC")
+    List<Exercise> findPublishedFiltered(
+        @Param("category") String category,
+        @Param("difficulty") String difficulty
+    );
+
+    @Query("SELECT e FROM Exercise e WHERE e.status = 'PUBLISHED' AND e.deletedAt IS NULL " +
+           "AND (:category IS NULL OR e.category = :category) " +
+           "AND (:difficulties IS NULL OR e.difficulty IN :difficulties) " +
+           "ORDER BY e.createdAt ASC")
+    List<Exercise> findPublishedFilteredByDifficulties(
+        @Param("category") String category,
+        @Param("difficulties") List<String> difficulties
+    );
 }

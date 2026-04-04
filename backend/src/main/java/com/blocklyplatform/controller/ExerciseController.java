@@ -1,6 +1,7 @@
 package com.blocklyplatform.controller;
 
 import com.blocklyplatform.dto.ExerciseCreateDto;
+import com.blocklyplatform.service.CategoryService;
 import com.blocklyplatform.service.ExerciseService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -16,10 +17,21 @@ import java.util.Map;
 public class ExerciseController {
 
     private final ExerciseService exerciseService;
+    private final CategoryService categoryService;
 
     @GetMapping("/published")
-    public ResponseEntity<?> listPublished() {
+    public ResponseEntity<?> listPublished(
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String difficulty) {
+        if (category != null || difficulty != null) {
+            return ResponseEntity.ok(exerciseService.listPublishedFiltered(category, difficulty));
+        }
         return ResponseEntity.ok(exerciseService.listPublished());
+    }
+
+    @GetMapping("/categories")
+    public ResponseEntity<?> listCategories() {
+        return ResponseEntity.ok(categoryService.listAll());
     }
 
     @GetMapping
@@ -63,8 +75,8 @@ public class ExerciseController {
     }
 
     @PostMapping("/{id}/like")
-    public ResponseEntity<?> like(@PathVariable Long id) {
-        return ResponseEntity.ok(exerciseService.like(id));
+    public ResponseEntity<?> like(@PathVariable Long id, @RequestParam String clientId) {
+        return ResponseEntity.ok(exerciseService.like(id, clientId));
     }
 
     @DeleteMapping("/{id}")

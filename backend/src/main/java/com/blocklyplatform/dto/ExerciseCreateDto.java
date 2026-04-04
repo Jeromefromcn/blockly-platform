@@ -15,5 +15,10 @@ public class ExerciseCreateDto {
     private String blocklyState;
     @NotBlank
     private String expectedOutput;
+    private String gradingMode = "OUTPUT_MATCH";
+    private String allowedBlocks;
+    private String hints; // null = no hints
     private String createdBy;
+    private String category;
+    private String difficulty = "MEDIUM";
 }

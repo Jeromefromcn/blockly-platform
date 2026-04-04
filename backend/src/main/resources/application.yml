@@ -4,15 +4,14 @@ spring:
     username: ${DB_USER:blockly}
     password: ${DB_PASS:blockly123}
     driver-class-name: com.mysql.cj.jdbc.Driver
+  flyway:
+    baselineOnMigrate: true
+    locations: classpath:db/migration
   jpa:
     hibernate:
       ddl-auto: none
     show-sql: false
     database-platform: org.hibernate.dialect.MySQLDialect
-  sql:
-    init:
-      mode: always
-      schema-locations: classpath:schema.sql
 
 server:
   port: 8081
@@ -33,3 +32,11 @@ management:
 logging:
   level:
     com.blocklyplatform: INFO
+
+super-admin:
+  username: ${SUPER_ADMIN_USERNAME:admin}
+  password: ${SUPER_ADMIN_PASSWORD:admin123}
+
+jwt:
+  secret: ${JWT_SECRET:blockly-platform-jwt-secret-key-2026-very-long}
+  expiry-hours: 8

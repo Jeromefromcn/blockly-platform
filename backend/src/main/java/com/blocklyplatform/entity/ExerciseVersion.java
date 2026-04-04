@@ -29,6 +29,15 @@ public class ExerciseVersion {
     @Column(name = "expected_output", nullable = false, columnDefinition = "TEXT")
     private String expectedOutput;
 
+    @Column(name = "grading_mode", nullable = false, length = 20)
+    private String gradingMode = "OUTPUT_MATCH";
+
+    @Column(name = "allowed_blocks", columnDefinition = "TEXT")
+    private String allowedBlocks;
+
+    @Column(name = "hints", columnDefinition = "TEXT")
+    private String hints; // JSON array: ["Hint 1","Hint 2","Hint 3"]
+
     @Column(name = "created_by")
     private String createdBy;
 

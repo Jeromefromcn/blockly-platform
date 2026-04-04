@@ -2,6 +2,12 @@ import { useEffect, useRef } from 'react';
 import * as Blockly from 'blockly';
 import { javascriptGenerator } from 'blockly/javascript';
 
+// Override text_print to use print() instead of window.alert() for compatibility with auto-grader
+javascriptGenerator.forBlock['text_print'] = function(block, generator) {
+  const value = generator.valueToCode(block, 'TEXT', javascriptGenerator.ORDER_NONE) || "''";
+  return 'print(' + value + ');\n';
+};
+
 const TOOLBOX = {
   kind: 'categoryToolbox',
   contents: [
@@ -59,15 +65,51 @@ const TOOLBOX = {
   ]
 };
 
-export default function BlocklyWorkspace({ onWorkspaceReady, initialState, readOnly = false }) {
+// Build a filtered toolbox that only includes allowed block types.
+// Categories with no remaining blocks are removed entirely.
+// Special categories (Variables, Functions) are only included if the admin selected their blocks.
+function buildFilteredToolbox(allowedBlocks) {
+  if (!allowedBlocks || allowedBlocks.length === 0) return TOOLBOX;
+
+  const VARIABLE_BLOCKS = ['variables_get', 'variables_set'];
+  const PROCEDURE_BLOCKS = ['procedures_defnoreturn', 'procedures_defreturn', 'procedures_callnoreturn', 'procedures_callreturn'];
+
+  const filteredContents = TOOLBOX.contents
+    .map(category => {
+      if (category.custom === 'VARIABLE') {
+        return VARIABLE_BLOCKS.some(t => allowedBlocks.includes(t)) ? category : null;
+      }
+      if (category.custom === 'PROCEDURE') {
+        return PROCEDURE_BLOCKS.some(t => allowedBlocks.includes(t)) ? category : null;
+      }
+      const filteredItems = (category.contents || []).filter(item => allowedBlocks.includes(item.type));
+      if (filteredItems.length === 0) return null;
+      return { ...category, contents: filteredItems };
+    })
+    .filter(Boolean);
+
+  return { ...TOOLBOX, contents: filteredContents };
+}
+
+export default function BlocklyWorkspace({ onWorkspaceReady, initialState, readOnly = false, allowedCategories = null, allowedBlocks = null }) {
   const containerRef = useRef(null);
   const workspaceRef = useRef(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
 
+    // allowedBlocks (array of block type strings) takes precedence over allowedCategories
+    let toolbox;
+    if (allowedBlocks && allowedBlocks.length > 0) {
+      toolbox = buildFilteredToolbox(allowedBlocks);
+    } else if (allowedCategories && allowedCategories.length > 0) {
+      toolbox = { ...TOOLBOX, contents: TOOLBOX.contents.filter(c => allowedCategories.includes(c.name)) };
+    } else {
+      toolbox = TOOLBOX;
+    }
+
     const workspace = Blockly.inject(containerRef.current, {
-      toolbox: readOnly ? null : TOOLBOX,
+      toolbox: readOnly ? null : toolbox,
       scrollbars: true,
       trashcan: !readOnly,
       readOnly,

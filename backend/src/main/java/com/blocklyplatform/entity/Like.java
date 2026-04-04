@@ -17,6 +17,9 @@ public class Like {
     @JoinColumn(name = "exercise_id", nullable = false)
     private Exercise exercise;
 
+    @Column(name = "client_id", nullable = false, length = 64)
+    private String clientId;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 

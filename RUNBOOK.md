@@ -1,33 +1,33 @@
-# Blockly 練習平台 — 項目構建與運維手冊
+# Blockly Exercise Platform — Build & Operations Guide
 
-## 一、項目概述
+## 1. Project Overview
 
-| 項目 | 說明 |
-|------|------|
-| 功能 | Blockly 積木編程練習平台，支持題目管理、學生提交、批量導入評分、點贊 |
-| 前端 | React 18 + Blockly 12.5.0，端口 **8090** |
-| 後端 | Java 17 + Spring Boot 3.2，內部端口 8081 |
-| 數據庫 | MySQL 8.0，持久化存儲 |
-| 監控 | Prometheus（端口 9090）+ Grafana（端口 3001） |
-| 部署 | Docker + Docker Compose |
-| 代碼托管 | GitHub |
+| Item | Description |
+|------|-------------|
+| Function | Blockly visual programming exercise platform with exercise management, student submissions, batch import grading, and likes |
+| Frontend | React 18 + Blockly 12.5.0, port **8090** |
+| Backend | Java 17 + Spring Boot 3.2, internal port 8081 |
+| Database | MySQL 8.0, persistent storage |
+| Monitoring | Prometheus (port 9090) + Grafana (port 3001) |
+| Deployment | Docker + Docker Compose |
+| Code Hosting | GitHub |
 
-> **注意**：v2 已移除 Node.js 沙箱服務，評分邏輯完全由後端 Java 處理。
+> **Note**: v2 removes the Node.js sandbox. All grading logic is handled entirely by the Java backend.
 
 ---
 
-## 二、環境要求
+## 2. Prerequisites
 
-服務器需安裝以下工具：
+The server must have the following tools installed:
 
 ```bash
-# 檢查
+# Verify
 docker --version        # >= 24.0
 docker compose version  # >= 2.0
-git --version           # 任意版本
+git --version           # any version
 ```
 
-如未安裝 Docker：
+If Docker is not installed:
 ```bash
 curl -fsSL https://get.docker.com | sudo sh
 sudo usermod -aG docker $USER
@@ -35,159 +35,159 @@ sudo usermod -aG docker $USER
 
 ---
 
-## 三、首次部署
+## 3. First-Time Deployment
 
-### 3.1 拉取代碼
+### 3.1 Clone the Repository
 
 ```bash
 git clone https://github.com/Jeromefromcn/blockly-platform.git
 cd blockly-platform
 ```
 
-### 3.2 啟動服務
+### 3.2 Start Services
 
 ```bash
 docker compose up -d --build
 ```
 
-首次構建需要下載依賴，預計 5-10 分鐘，請耐心等待。
+The first build downloads dependencies and compiles code — this may take **5–10 minutes**. Please be patient.
 
-### 3.3 驗證啟動
+### 3.3 Verify Startup
 
 ```bash
-# 查看容器狀態（應有 5 個容器，均為 Up）
+# Check container status (should show 5 containers, all "Up")
 docker compose ps
 
-# 測試前端可訪問
+# Test frontend accessibility
 curl -o /dev/null -w "%{http_code}" http://localhost:8090
-# 應返回 200
+# Expected: 200
 
-# 測試後端 API
+# Test backend API
 curl http://localhost:8090/api/exercises/published
-# 應返回 []
+# Expected: []
 ```
 
-### 3.4 訪問地址
+### 3.4 Access URLs
 
-| 頁面 | 地址 |
-|------|------|
-| 學生練習頁面 | `http://服務器IP:8090` |
-| 管理後台 | `http://服務器IP:8090/admin` |
-| Prometheus | `http://服務器IP:9090` |
-| Grafana | `http://服務器IP:3001`（帳號 admin / admin123） |
+| Page | URL |
+|------|-----|
+| Student exercise page | `http://SERVER_IP:8090` |
+| Admin panel | `http://SERVER_IP:8090/admin` |
+| Prometheus | `http://SERVER_IP:9090` |
+| Grafana | `http://SERVER_IP:3001` (login: admin / admin123) |
 
-> 如果外部無法訪問，需在雲服務商（如 GCP）的防火牆中開放對應端口。
+> If external access fails, open the relevant ports in your cloud provider's firewall (e.g., GCP firewall rules).
 
 ---
 
-## 四、日常操作
+## 4. Day-to-Day Operations
 
-### 啟動服務
+### Start Services
 ```bash
 cd blockly-platform
 docker compose up -d
 ```
 
-### 停止服務
+### Stop Services
 ```bash
 docker compose down
 ```
-> 數據保存在 Docker Volume（`db_data`、`prometheus_data`、`grafana_data`），停止不會丟失數據。
+> Data is stored in Docker Volumes (`db_data`, `prometheus_data`, `grafana_data`). Stopping services does **not** delete data.
 
-### 重啟服務
+### Restart Services
 ```bash
 docker compose restart
 ```
 
-### 查看容器狀態
+### Check Container Status
 ```bash
 docker compose ps
 ```
 
 ---
 
-## 五、更新部署
+## 5. Updating / Redeploying
 
-每次代碼有改動後，按以下步驟重新部署：
+After code changes, follow these steps:
 
 ```bash
 cd blockly-platform
 
-# 1. 拉取最新代碼
+# 1. Pull latest code
 git pull
 
-# 2. 重新構建並啟動（只重建有改動的服務）
+# 2. Rebuild and restart (only changed services are rebuilt)
 docker compose up -d --build
 ```
 
-### 只更新某個服務
+### Update a Single Service
 
 ```bash
-# 只更新前端
+# Rebuild only the frontend
 docker compose up -d --build frontend
 
-# 只更新後端
+# Rebuild only the backend
 docker compose up -d --build backend
 ```
 
 ---
 
-## 六、查看日誌
+## 6. Viewing Logs
 
 ```bash
-# 查看所有服務日誌
+# All services
 docker compose logs
 
-# 實時跟蹤某個服務（Ctrl+C 退出）
+# Follow a specific service in real time (Ctrl+C to exit)
 docker compose logs -f frontend
 docker compose logs -f backend
 docker compose logs -f db
 docker compose logs -f prometheus
 docker compose logs -f grafana
 
-# 查看最近 100 行
+# Last 100 lines
 docker compose logs --tail=100 backend
 ```
 
 ---
 
-## 七、數據庫操作
+## 7. Database Operations
 
-### 進入數據庫
+### Enter the Database Shell
 
 ```bash
 docker exec -it blockly_db mysql -ublockly -pblockly123 blocklydb
 ```
 
-常用 SQL：
+Common SQL queries:
 ```sql
--- 查看所有題目
+-- List all exercises
 SELECT id, code, title, status, current_version_number, like_count FROM exercises;
 
--- 查看提交記錄
+-- View submissions with scores
 SELECT s.id, e.title, s.student_name, g.tutor_score, g.tutor_comment
 FROM submissions s
 JOIN exercises e ON s.exercise_id = e.id
 LEFT JOIN grades g ON g.submission_id = s.id
 ORDER BY s.submitted_at DESC;
 
--- 查看點贊記錄
+-- View like counts per exercise
 SELECT e.title, COUNT(l.id) AS likes
 FROM likes l
 JOIN exercises e ON l.exercise_id = e.id
 GROUP BY e.id;
 
--- 退出
+-- Exit
 exit
 ```
 
-### 數據備份
+### Backup Data
 
 ```bash
 docker exec blockly_db mysqldump -ublockly -pblockly123 blocklydb > backup_$(date +%Y%m%d).sql
 ```
 
-### 數據恢復
+### Restore Data
 
 ```bash
 cat backup_20260101.sql | docker exec -i blockly_db mysql -ublockly -pblockly123 blocklydb
@@ -195,106 +195,209 @@ cat backup_20260101.sql | docker exec -i blockly_db mysql -ublockly -pblockly123
 
 ---
 
-## 八、回滾版本
+## 8. Rolling Back a Version
 
 ```bash
-# 查看提交歷史
+# View commit history
 git log --oneline
 
-# 切換到指定版本
+# Switch to a specific version
 git checkout <commit-hash>
 
-# 重新構建
+# Rebuild
 docker compose up -d --build
 ```
 
 ---
 
-## 九、常見問題排查
+## 9. Troubleshooting
 
-### 服務無法訪問（外部）
-1. 確認雲服務商防火牆已開放相應端口（8090、9090、3001）
-2. 確認容器正在運行：`docker compose ps`
+### Service Unreachable (External)
+1. Confirm required ports (8090, 9090, 3001) are open in your cloud firewall
+2. Verify containers are running: `docker compose ps`
 
-### 後端啟動失敗
+### Backend Fails to Start
 ```bash
-# 查看日誌找原因
+# Check logs for the error
 docker compose logs backend
 
-# 常見原因：數據庫未就緒，等待後重試（MySQL healthcheck start_period 為 90s）
+# Common cause: database not ready yet (MySQL healthcheck start_period is 90s)
 docker compose restart backend
 ```
 
-### 數據庫連接失敗
+### Database Connection Error
 ```bash
-# 確認 db 容器健康狀態
+# Check db container health
 docker inspect blockly_db | grep -A5 Health
 
-# 重啟整個服務
+# Full restart
 docker compose down && docker compose up -d
 ```
 
 ---
 
-## 十、架構說明
+## 10. Architecture
 
 ```
-外部請求 :8090
+External Request :8090
        │
   [blockly_frontend] Nginx
-  靜態文件 + 反向代理
+  Static files + reverse proxy
        │
   [blockly_backend] Spring Boot :8081
-  業務邏輯 + 評分（純 Java，無沙箱）
+  Business logic + grading (pure Java, no sandbox)
        │
   [blockly_db] MySQL 8.0
-  持久化數據（Volume: db_data）
+  Persistent data (Volume: db_data)
 
-監控鏈路：
+Monitoring:
   [blockly_backend] /actuator/prometheus
        │
-  [blockly_prometheus] :9090  ←── 抓取間隔 10s（Volume: prometheus_data）
+  [blockly_prometheus] :9090  ←── scrape interval 10s (Volume: prometheus_data)
        │
-  [blockly_grafana] :3001（Volume: grafana_data）
+  [blockly_grafana] :3001 (Volume: grafana_data)
 ```
 
 ---
 
-## 十一、API 接口列表
+## 11. API Reference
 
-### 題目管理
+### Authentication
 
-| 方法 | 路徑 | 說明 |
-|------|------|------|
-| GET | /api/exercises/published | 學生：獲取已發布題目 |
-| GET | /api/exercises | 管理：獲取所有題目 |
-| GET | /api/exercises/{id} | 獲取題目詳情（含當前版本） |
-| GET | /api/exercises/{id}/versions | 獲取題目所有版本列表 |
-| POST | /api/exercises | 創建題目 |
-| PUT | /api/exercises/{id} | 更新題目（創建新版本） |
-| POST | /api/exercises/{id}/publish | 發布題目 |
-| POST | /api/exercises/{id}/unpublish | 下架題目 |
-| POST | /api/exercises/{id}/rollback/{v} | 回滾到指定版本 |
-| POST | /api/exercises/{id}/like | 點贊題目 |
-| DELETE | /api/exercises/{id} | 刪除題目（軟刪除） |
+| Method | Path | Auth Required | Description |
+|--------|------|---------------|-------------|
+| POST | /api/auth/login | No | Login; sets httpOnly cookie `auth_token` |
+| POST | /api/auth/logout | No | Logout; clears cookie |
+| GET | /api/auth/me | Yes | Get current user info + permissions |
 
-### 提交與評分
+### User Profile
 
-| 方法 | 路徑 | 說明 |
-|------|------|------|
-| POST | /api/submissions/import | 批量導入學生答案（JSON 文件上傳） |
-| GET | /api/submissions | 查看提交記錄（可按 exerciseId 篩選） |
-| GET | /api/submissions/{id} | 獲取提交詳情 |
-| PATCH | /api/submissions/{id}/grade | 老師覆蓋評分（tutorScore + tutorComment） |
-| DELETE | /api/submissions/{id} | 刪除提交記錄 |
+| Method | Path | Auth Required | Description |
+|--------|------|---------------|-------------|
+| GET | /api/profile | Yes | Get own profile |
+| PUT | /api/profile | Yes | Update own display name and email |
+| PUT | /api/profile/password | Yes (non-super-admin) | Change own password |
 
-### 批量導入文件格式
+### User Management (Super Admin only)
 
-每個 JSON 文件結構：
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | /api/admin/users | List all users |
+| POST | /api/admin/users | Create a user |
+| DELETE | /api/admin/users/{id} | Delete a user |
+| POST | /api/admin/users/{id}/reset-password | Reset password to 12345678 |
+| POST | /api/admin/users/{id}/force-logout | Increment token_version to invalidate sessions |
+| POST | /api/admin/users/import-csv | Batch import users from CSV (columns: username,password,role) |
+| GET | /api/admin/permissions/{role} | Get permissions for a role |
+| PUT | /api/admin/permissions/{role} | Set permissions for a role |
+
+### Exercise Management
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | /api/exercises/published | Student: list published exercises |
+| GET | /api/exercises | Admin: list all exercises |
+| GET | /api/exercises/{id} | Get exercise detail (with current version) |
+| GET | /api/exercises/{id}/versions | List all versions of an exercise |
+| POST | /api/exercises | Create exercise |
+| PUT | /api/exercises/{id} | Update exercise (creates new version) |
+| POST | /api/exercises/{id}/publish | Publish exercise |
+| POST | /api/exercises/{id}/unpublish | Unpublish exercise |
+| POST | /api/exercises/{id}/rollback/{v} | Roll back to specific version |
+| POST | /api/exercises/{id}/like | Like an exercise |
+| DELETE | /api/exercises/{id} | Delete exercise (soft delete) |
+
+### Submissions & Grading
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | /api/submissions/import | Batch import student answers (JSON file upload) |
+| POST | /api/submissions/import-zip | Batch import from ZIP archive containing JSON files |
+| GET | /api/submissions | List submissions (filter by exerciseId optional) |
+| GET | /api/submissions/{id} | Get submission detail |
+| GET | /api/submissions/export-csv?exerciseId= | Export grades as CSV (exerciseId optional) |
+| PATCH | /api/submissions/{id}/grade | Tutor overrides grade (tutorScore + tutorComment) |
+| DELETE | /api/submissions/{id} | Delete submission |
+
+### Batch Import File Format
+
+Each JSON file must follow this structure:
 ```json
 {
   "exerciseId": 1,
-  "studentName": "學生姓名",
-  "blocklyState": { ... }
+  "studentName": "Student Name",
+  "blocklyState": { ... },
+  "generatedCode": "function add(a,b){return a+b;}"
 }
 ```
+
+The `generatedCode` field is optional. When present, the submission is automatically graded and an `autoScore` (0–100) is stored.
+
+---
+
+## 12. Authentication & Roles
+
+### Roles
+
+| Role | Description |
+|------|-------------|
+| SUPER_ADMIN | Platform administrator. Credentials in `application.yml` (env override: `SUPER_ADMIN_USERNAME`, `SUPER_ADMIN_PASSWORD`). Not stored in DB. Always has all permissions. |
+| TUTOR | Teacher/grader. Stored in DB. Created by super admin. Permissions configurable. |
+| STUDENT | Learner. Stored in DB. Created by super admin. Permissions configurable. |
+
+### Permissions
+
+| Permission | Description |
+|-----------|-------------|
+| VIEW_EXERCISES | View published exercises |
+| SUBMIT_EXERCISES | Submit answers |
+| GRADE_SUBMISSIONS | Grade student submissions |
+| MANAGE_EXERCISES | Create/edit/delete exercises (Admin Panel access) |
+| MANAGE_USERS | Unused by routes; reserved for future use |
+
+### JWT Cookie
+
+- Cookie name: `auth_token`
+- Type: httpOnly, path `/`
+- Expiry: 8 hours
+- Claims: `sub` (username), `role`, `tokenVersion`, `exp`
+
+### Default Password
+
+New users and users whose password has been reset by super admin receive the default password: **12345678**
+
+### Application Configuration
+
+```yaml
+super-admin:
+  username: ${SUPER_ADMIN_USERNAME:admin}       # default: admin
+  password: ${SUPER_ADMIN_PASSWORD:admin123}    # default: admin123
+
+jwt:
+  secret: ${JWT_SECRET:blockly-platform-jwt-secret-key-2026-very-long}
+  expiry-hours: 8
+```
+
+### Live Database Migration (new tables)
+
+```sql
+CREATE TABLE IF NOT EXISTS users (
+  id             BIGINT AUTO_INCREMENT PRIMARY KEY,
+  username       VARCHAR(100) NOT NULL UNIQUE,
+  password_hash  VARCHAR(255) NOT NULL,
+  role           VARCHAR(20) NOT NULL,
+  display_name   VARCHAR(100),
+  email          VARCHAR(100),
+  enabled        BOOLEAN NOT NULL DEFAULT TRUE,
+  token_version  INT NOT NULL DEFAULT 0,
+  created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS role_permissions (
+  role        VARCHAR(20) NOT NULL,
+  permission  VARCHAR(50) NOT NULL,
+  PRIMARY KEY (role, permission)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+```
+
+---

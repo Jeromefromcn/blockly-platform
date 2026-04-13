@@ -1,0 +1,57 @@
+{
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "allow": [
+      "Read",
+      "Glob",
+      "Grep",
+      "Edit(**)",
+      "Write(**)",
+      "Bash(mvn *)",
+      "Bash(./mvnw *)",
+      "Bash(git *)",
+      "Bash(docker compose *)"
+    ],
+    "deny": [
+      "Edit(.env)",
+      "Edit(.env.local)",
+      "Edit(.env.*)",
+      "Edit(.claude/**)",
+      "Edit(.git/**)",
+      "Edit(target/**)",
+      "Read(.env)",
+      "Read(.env.*)",
+      "Bash(rm -rf *)",
+      "Bash(sudo *)",
+      "Bash(curl * | bash)",
+      "Bash(wget * | bash)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd backend && mvn -q spotless:apply 2>/dev/null || true"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/check-dangerous-cmd.sh"
+          }
+        ]
+      }
+    ]
+  },
+  "env": {
+    "MAVEN_OPTS": "-Xmx1024m"
+  }
+}
